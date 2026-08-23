@@ -1,5 +1,36 @@
-import { ExamProject } from '../types';
+import { ExamProject, ExamPartConfigs } from '../types';
 import { generateShuffledExamVariants } from '../utils/shuffler';
+
+export const DEFAULT_PART_CONFIGS: ExamPartConfigs = {
+  part1: {
+    name: 'Phần I: TN 4 lựa chọn',
+    pointsPerQuestion: 0.25,
+    targetQuestions: 12,
+    enabled: true,
+    description: 'Trắc nghiệm khách quan 4 lựa chọn (A, B, C, D)'
+  },
+  part2: {
+    name: 'Phần II: TN Đúng / Sai',
+    pointsPerQuestion: 1.0,
+    targetQuestions: 4,
+    enabled: true,
+    description: 'Trắc nghiệm Đúng / Sai (mỗi câu gồm 4 ý a, b, c, d)'
+  },
+  part3: {
+    name: 'Phần III: Trả lời ngắn',
+    pointsPerQuestion: 0.5,
+    targetQuestions: 6,
+    enabled: true,
+    description: 'Câu hỏi trắc nghiệm yêu cầu điền đáp số ngắn gọn'
+  },
+  part4: {
+    name: 'Phần IV: Tự luận',
+    pointsPerQuestion: 1.0,
+    targetQuestions: 2,
+    enabled: true,
+    description: 'Câu hỏi tự luận trình bày lời giải chi tiết'
+  }
+};
 
 export const SAMPLE_TOAN_12_PROJECT: ExamProject = (() => {
   const baseQuestions = [
@@ -165,6 +196,7 @@ export const SAMPLE_TOAN_12_PROJECT: ExamProject = (() => {
       timeDuration: 90,
       structureOption: 'option_1',
       teacherName: 'Tổ Toán - Tin học',
+      partConfigs: DEFAULT_PART_CONFIGS,
     },
     matrix: [
       {

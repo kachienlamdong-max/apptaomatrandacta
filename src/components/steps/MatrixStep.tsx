@@ -15,13 +15,20 @@ import {
   Unlock,
   RefreshCw,
   Table as TableIcon,
-  LayoutGrid
+  LayoutGrid,
+  Sliders,
+  ChevronDown,
+  ChevronUp,
+  Settings2,
+  Check
 } from 'lucide-react';
-import { MatrixRow, SpecificationItem, ExamHeaderConfig } from '../../types';
+import { MatrixRow, SpecificationItem, ExamHeaderConfig, ExamPartConfigs, PartConfig } from '../../types';
 import { SUBJECTS_LIST } from '../../data/curriculumData';
+import { DEFAULT_PART_CONFIGS } from '../../data/defaultProjects';
 
 interface MatrixStepProps {
   header: ExamHeaderConfig;
+  onChangeHeader?: (header: ExamHeaderConfig) => void;
   matrix: MatrixRow[];
   onChangeMatrix: (matrix: MatrixRow[]) => void;
   specification: SpecificationItem[];
@@ -35,6 +42,7 @@ interface MatrixStepProps {
 
 export const MatrixStep: React.FC<MatrixStepProps> = ({
   header,
+  onChangeHeader,
   matrix,
   onChangeMatrix,
   specification,
@@ -48,17 +56,129 @@ export const MatrixStep: React.FC<MatrixStepProps> = ({
   const [activeSubTab, setActiveSubTab] = useState<'matrix' | 'spec'>('matrix');
   const [specViewMode, setSpecViewMode] = useState<'table' | 'cards'>('table');
   const [specSyncNotification, setSpecSyncNotification] = useState<string | null>(null);
+  const [isConfigPanelOpen, setIsConfigPanelOpen] = useState(false);
+
+  // Active Part configurations with fallback to defaults
+  const partConfigs: ExamPartConfigs = header.partConfigs || DEFAULT_PART_CONFIGS;
+
+  const p1_pts = partConfigs.part1?.pointsPerQuestion ?? 0.25;
+  const p2_pts = partConfigs.part2?.pointsPerQuestion ?? 1.0;
+  const p3_pts = partConfigs.part3?.pointsPerQuestion ?? 0.5;
+  const p4_pts = partConfigs.part4?.pointsPerQuestion ?? 1.0;
+
+  const p1_target = partConfigs.part1?.targetQuestions ?? 12;
+  const p2_target = partConfigs.part2?.targetQuestions ?? 4;
+  const p3_target = partConfigs.part3?.targetQuestions ?? 6;
+  const p4_target = partConfigs.part4?.targetQuestions ?? 2;
+
+  // Handler to update part configs (points per question, target questions, name, enable)
+  const handleUpdatePartConfig = (partKey: keyof ExamPartConfigs, field: keyof PartConfig, value: any) => {
+    const parsedValue = (field === 'pointsPerQuestion' || field === 'targetQuestions')
+      ? Math.max(0, Number(value) || 0)
+      : value;
+
+    const newConfigs: ExamPartConfigs = {
+      ...partConfigs,
+      [partKey]: {
+        ...partConfigs[partKey],
+        [field]: parsedValue
+      }
+    };
+
+    if (onChangeHeader) {
+      onChangeHeader({
+        ...header,
+        partConfigs: newConfigs
+      });
+    }
+
+    // If point per question changes, recalculate row points for all rows
+    if (field === 'pointsPerQuestion') {
+      const curP1Pts = partKey === 'part1' ? Number(parsedValue) : (newConfigs.part1?.pointsPerQuestion ?? 0.25);
+      const curP2Pts = partKey === 'part2' ? Number(parsedValue) : (newConfigs.part2?.pointsPerQuestion ?? 1.0);
+      const curP3Pts = partKey === 'part3' ? Number(parsedValue) : (newConfigs.part3?.pointsPerQuestion ?? 0.5);
+      const curP4Pts = partKey === 'part4' ? Number(parsedValue) : (newConfigs.part4?.pointsPerQuestion ?? 1.0);
+
+      const updated = matrix.map(row => {
+        const p1Score = (row.part1_nb + row.part1_th + row.part1_vd + row.part1_vdc) * curP1Pts;
+        const p2Score = (row.part2_nb + row.part2_th + row.part2_vd + row.part2_vdc) * curP2Pts;
+        const p3Score = (row.part3_nb + row.part3_th + row.part3_vd + row.part3_vdc) * curP3Pts;
+        const p4Score = (row.part4_nb + row.part4_th + row.part4_vd + row.part4_vdc) * curP4Pts;
+        return {
+          ...row,
+          totalPoints: Number((p1Score + p2Score + p3Score + p4Score).toFixed(2))
+        };
+      });
+      onChangeMatrix(updated);
+    }
+  };
+
+  // Preset structure loader
+  const handleApplyPreset = (presetKey: 'bo_2025' | 'tn_tuluan_70_30' | 'ket_hop_4_phan' | 'tn_100') => {
+    let newConfigs: ExamPartConfigs;
+    if (presetKey === 'bo_2025') {
+      newConfigs = {
+        part1: { name: 'Phần I: TN 4 lựa chọn', pointsPerQuestion: 0.25, targetQuestions: 12, enabled: true, description: '12 câu TN 4 lựa chọn (3.0đ)' },
+        part2: { name: 'Phần II: TN Đúng/Sai', pointsPerQuestion: 1.0, targetQuestions: 4, enabled: true, description: '4 câu Đúng/Sai (4.0đ)' },
+        part3: { name: 'Phần III: Trả lời ngắn', pointsPerQuestion: 0.5, targetQuestions: 6, enabled: true, description: '6 câu Trả lời ngắn (3.0đ)' },
+        part4: { name: 'Phần IV: Tự luận', pointsPerQuestion: 1.0, targetQuestions: 0, enabled: false, description: 'Không có tự luận' },
+      };
+    } else if (presetKey === 'tn_tuluan_70_30') {
+      newConfigs = {
+        part1: { name: 'Phần I: TN 4 lựa chọn', pointsPerQuestion: 0.25, targetQuestions: 28, enabled: true, description: '28 câu TN (7.0đ)' },
+        part2: { name: 'Phần II: TN Đúng/Sai', pointsPerQuestion: 1.0, targetQuestions: 0, enabled: false, description: 'Tắt' },
+        part3: { name: 'Phần III: Trả lời ngắn', pointsPerQuestion: 0.5, targetQuestions: 0, enabled: false, description: 'Tắt' },
+        part4: { name: 'Phần IV: Tự luận', pointsPerQuestion: 1.0, targetQuestions: 3, enabled: true, description: '3 câu tự luận (3.0đ)' },
+      };
+    } else if (presetKey === 'ket_hop_4_phan') {
+      newConfigs = {
+        part1: { name: 'Phần I: TN 4 lựa chọn', pointsPerQuestion: 0.25, targetQuestions: 16, enabled: true, description: '16 câu TN (4.0đ)' },
+        part2: { name: 'Phần II: TN Đúng/Sai', pointsPerQuestion: 1.0, targetQuestions: 2, enabled: true, description: '2 câu Đúng/Sai (2.0đ)' },
+        part3: { name: 'Phần III: Trả lời ngắn', pointsPerQuestion: 0.5, targetQuestions: 4, enabled: true, description: '4 câu Trả lời ngắn (2.0đ)' },
+        part4: { name: 'Phần IV: Tự luận', pointsPerQuestion: 1.0, targetQuestions: 2, enabled: true, description: '2 câu tự luận (2.0đ)' },
+      };
+    } else {
+      newConfigs = {
+        part1: { name: 'Phần I: TN 4 lựa chọn', pointsPerQuestion: 0.25, targetQuestions: 40, enabled: true, description: '40 câu TN 4 lựa chọn (10.0đ)' },
+        part2: { name: 'Phần II: TN Đúng/Sai', pointsPerQuestion: 1.0, targetQuestions: 0, enabled: false, description: 'Tắt' },
+        part3: { name: 'Phần III: Trả lời ngắn', pointsPerQuestion: 0.5, targetQuestions: 0, enabled: false, description: 'Tắt' },
+        part4: { name: 'Phần IV: Tự luận', pointsPerQuestion: 1.0, targetQuestions: 0, enabled: false, description: 'Tắt' },
+      };
+    }
+
+    if (onChangeHeader) {
+      onChangeHeader({
+        ...header,
+        partConfigs: newConfigs
+      });
+    }
+
+    // Recalculate row points
+    const updated = matrix.map(row => {
+      const p1Score = (row.part1_nb + row.part1_th + row.part1_vd + row.part1_vdc) * newConfigs.part1.pointsPerQuestion;
+      const p2Score = (row.part2_nb + row.part2_th + row.part2_vd + row.part2_vdc) * newConfigs.part2.pointsPerQuestion;
+      const p3Score = (row.part3_nb + row.part3_th + row.part3_vd + row.part3_vdc) * newConfigs.part3.pointsPerQuestion;
+      const p4Score = (row.part4_nb + row.part4_th + row.part4_vd + row.part4_vdc) * newConfigs.part4.pointsPerQuestion;
+      return {
+        ...row,
+        totalPoints: Number((p1Score + p2Score + p3Score + p4Score).toFixed(2))
+      };
+    });
+    onChangeMatrix(updated);
+    setSpecSyncNotification('✨ Đã áp dụng mẫu thang điểm & số câu mục tiêu thành công!');
+    setTimeout(() => setSpecSyncNotification(null), 3500);
+  };
 
   // Matrix Row update handlers
   const handleUpdateRow = (id: string, field: keyof MatrixRow, value: any) => {
     const updated = matrix.map(row => {
       if (row.id === id) {
         const newRow = { ...row, [field]: value };
-        // Recalculate row points
-        const p1Score = (newRow.part1_nb + newRow.part1_th + newRow.part1_vd + newRow.part1_vdc) * 0.25;
-        const p2Score = (newRow.part2_nb + newRow.part2_th + newRow.part2_vd + newRow.part2_vdc) * 1.0;
-        const p3Score = (newRow.part3_nb + newRow.part3_th + newRow.part3_vd + newRow.part3_vdc) * 0.5;
-        const p4Score = (newRow.part4_nb + newRow.part4_th + newRow.part4_vd + newRow.part4_vdc) * 1.0;
+        // Recalculate row points using configurable points per question
+        const p1Score = (newRow.part1_nb + newRow.part1_th + newRow.part1_vd + newRow.part1_vdc) * p1_pts;
+        const p2Score = (newRow.part2_nb + newRow.part2_th + newRow.part2_vd + newRow.part2_vdc) * p2_pts;
+        const p3Score = (newRow.part3_nb + newRow.part3_th + newRow.part3_vd + newRow.part3_vdc) * p3_pts;
+        const p4Score = (newRow.part4_nb + newRow.part4_th + newRow.part4_vd + newRow.part4_vdc) * p4_pts;
         newRow.totalPoints = Number((p1Score + p2Score + p3Score + p4Score).toFixed(2));
         return newRow;
       }
@@ -211,6 +331,12 @@ export const MatrixStep: React.FC<MatrixStepProps> = ({
   const totalP4_vd = matrix.reduce((sum, r) => sum + r.part4_vd, 0);
   const totalP4_vdc = matrix.reduce((sum, r) => sum + r.part4_vdc, 0);
 
+  // Total questions per part in matrix
+  const totalP1 = totalP1_nb + totalP1_th + totalP1_vd + totalP1_vdc;
+  const totalP2 = totalP2_nb + totalP2_th + totalP2_vd + totalP2_vdc;
+  const totalP3 = totalP3_nb + totalP3_th + totalP3_vd + totalP3_vdc;
+  const totalP4 = totalP4_nb + totalP4_th + totalP4_vd + totalP4_vdc;
+
   // Total questions per cognitive level
   const grandNb = totalP1_nb + totalP2_nb + totalP3_nb + totalP4_nb;
   const grandTh = totalP1_th + totalP2_th + totalP3_th + totalP4_th;
@@ -218,32 +344,49 @@ export const MatrixStep: React.FC<MatrixStepProps> = ({
   const grandVdc = totalP1_vdc + totalP2_vdc + totalP3_vdc + totalP4_vdc;
   const grandTotalQuestions = grandNb + grandTh + grandVd + grandVdc;
 
-  // Points per column calculation
-  const ptsP1_nb = totalP1_nb * 0.25;
-  const ptsP1_th = totalP1_th * 0.25;
-  const ptsP1_vd = totalP1_vd * 0.25;
-  const ptsP1_vdc = totalP1_vdc * 0.25;
+  // Target totals
+  const grandTargetQuestions = (partConfigs.part1?.enabled ? p1_target : 0) +
+    (partConfigs.part2?.enabled ? p2_target : 0) +
+    (partConfigs.part3?.enabled ? p3_target : 0) +
+    (partConfigs.part4?.enabled ? p4_target : 0);
 
-  const ptsP2_nb = totalP2_nb * 1.0;
-  const ptsP2_th = totalP2_th * 1.0;
-  const ptsP2_vd = totalP2_vd * 1.0;
-  const ptsP2_vdc = totalP2_vdc * 1.0;
+  // Points per column calculation using configurable p1_pts, p2_pts, p3_pts, p4_pts
+  const ptsP1_nb = totalP1_nb * p1_pts;
+  const ptsP1_th = totalP1_th * p1_pts;
+  const ptsP1_vd = totalP1_vd * p1_pts;
+  const ptsP1_vdc = totalP1_vdc * p1_pts;
 
-  const ptsP3_nb = totalP3_nb * 0.5;
-  const ptsP3_th = totalP3_th * 0.5;
-  const ptsP3_vd = totalP3_vd * 0.5;
-  const ptsP3_vdc = totalP3_vdc * 0.5;
+  const ptsP2_nb = totalP2_nb * p2_pts;
+  const ptsP2_th = totalP2_th * p2_pts;
+  const ptsP2_vd = totalP2_vd * p2_pts;
+  const ptsP2_vdc = totalP2_vdc * p2_pts;
 
-  const ptsP4_nb = totalP4_nb * 1.0;
-  const ptsP4_th = totalP4_th * 1.0;
-  const ptsP4_vd = totalP4_vd * 1.0;
-  const ptsP4_vdc = totalP4_vdc * 1.0;
+  const ptsP3_nb = totalP3_nb * p3_pts;
+  const ptsP3_th = totalP3_th * p3_pts;
+  const ptsP3_vd = totalP3_vd * p3_pts;
+  const ptsP3_vdc = totalP3_vdc * p3_pts;
+
+  const ptsP4_nb = totalP4_nb * p4_pts;
+  const ptsP4_th = totalP4_th * p4_pts;
+  const ptsP4_vd = totalP4_vd * p4_pts;
+  const ptsP4_vdc = totalP4_vdc * p4_pts;
 
   const totalPointsP1 = ptsP1_nb + ptsP1_th + ptsP1_vd + ptsP1_vdc;
   const totalPointsP2 = ptsP2_nb + ptsP2_th + ptsP2_vd + ptsP2_vdc;
   const totalPointsP3 = ptsP3_nb + ptsP3_th + ptsP3_vd + ptsP3_vdc;
   const totalPointsP4 = ptsP4_nb + ptsP4_th + ptsP4_vd + ptsP4_vdc;
   const grandTotalPoints = Number((totalPointsP1 + totalPointsP2 + totalPointsP3 + totalPointsP4).toFixed(2));
+
+  const targetPointsP1 = p1_target * p1_pts;
+  const targetPointsP2 = p2_target * p2_pts;
+  const targetPointsP3 = p3_target * p3_pts;
+  const targetPointsP4 = p4_target * p4_pts;
+  const grandTargetPoints = Number((
+    (partConfigs.part1?.enabled ? targetPointsP1 : 0) +
+    (partConfigs.part2?.enabled ? targetPointsP2 : 0) +
+    (partConfigs.part3?.enabled ? targetPointsP3 : 0) +
+    (partConfigs.part4?.enabled ? targetPointsP4 : 0)
+  ).toFixed(2));
 
   // Point ratios for 4 cognitive levels
   const ptsTotalNb = ptsP1_nb + ptsP2_nb + ptsP3_nb + ptsP4_nb;
@@ -297,6 +440,22 @@ export const MatrixStep: React.FC<MatrixStepProps> = ({
 
         {/* AI & Matrix Action Trigger Buttons */}
         <div className="flex flex-wrap items-center gap-2">
+
+          {/* Toggle Point & Question Count Customizer Panel */}
+          <button
+            id="btn-toggle-part-config"
+            onClick={() => setIsConfigPanelOpen(!isConfigPanelOpen)}
+            className={`inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-xl border transition-all ${
+              isConfigPanelOpen
+                ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                : 'bg-white text-indigo-700 border-indigo-200 hover:bg-indigo-50'
+            }`}
+            title="Tùy chỉnh số câu, số điểm mỗi câu và tổng điểm từng phần"
+          >
+            <Settings2 className="w-3.5 h-3.5" />
+            <span>Cài đặt Thang điểm & Số câu</span>
+            {isConfigPanelOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          </button>
           
           <button
             id="btn-import-syllabus"
@@ -342,6 +501,344 @@ export const MatrixStep: React.FC<MatrixStepProps> = ({
         </div>
 
       </div>
+
+      {/* COLLAPSIBLE ADVANCED PART POINT & QUESTION COUNT CONFIGURATION PANEL */}
+      {isConfigPanelOpen && (
+        <div className="bg-white p-5 rounded-2xl border-2 border-indigo-200 shadow-sm space-y-4 animate-in fade-in slide-in-from-top-2">
+          
+          <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100">
+            <div>
+              <h4 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+                <Sliders className="w-4 h-4 text-indigo-600" />
+                <span>Thiết Lập Số Câu, Điểm Mỗi Câu & Tổng Điểm Từng Phần</span>
+              </h4>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Thầy/cô có thể tự do nhập số điểm cho mỗi câu, số lượng câu hỏi mục tiêu cho từng phần hoặc chọn nhanh các cấu trúc mẫu bên dưới.
+              </p>
+            </div>
+
+            {/* Quick Structure Preset Buttons */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mr-1">Mẫu nhanh:</span>
+              <button
+                onClick={() => handleApplyPreset('bo_2025')}
+                className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-bold border border-indigo-200 transition-colors"
+                title="12 câu TN (3đ) + 4 câu Đ/S (4đ) + 6 câu TLN (3đ)"
+              >
+                ⚡ Chuẩn Bộ 2025
+              </button>
+              <button
+                onClick={() => handleApplyPreset('tn_tuluan_70_30')}
+                className="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-bold border border-blue-200 transition-colors"
+                title="28 câu TN (7đ) + 3 câu Tự luận (3đ)"
+              >
+                ⚡ 70% TN + 30% TL
+              </button>
+              <button
+                onClick={() => handleApplyPreset('ket_hop_4_phan')}
+                className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-xs font-bold border border-emerald-200 transition-colors"
+                title="16 câu TN + 2 câu Đ/S + 4 câu TLN + 2 câu TL"
+              >
+                ⚡ Kết hợp 4 phần
+              </button>
+              <button
+                onClick={() => handleApplyPreset('tn_100')}
+                className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold border border-slate-300 transition-colors"
+                title="40 câu trắc nghiệm 4 lựa chọn (10 điểm)"
+              >
+                ⚡ 100% Trắc nghiệm (40 câu)
+              </button>
+            </div>
+          </div>
+
+          {/* 4 Cards for 4 Parts */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+            
+            {/* PART 1 CARD */}
+            <div className="bg-indigo-50/50 p-3.5 rounded-xl border border-indigo-200 flex flex-col justify-between space-y-3">
+              <div>
+                <div className="flex items-center justify-between">
+                  <span className="font-extrabold text-xs text-indigo-900">PHẦN I</span>
+                  <label className="flex items-center gap-1 text-[11px] text-slate-600 font-semibold cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={partConfigs.part1?.enabled ?? true}
+                      onChange={(e) => handleUpdatePartConfig('part1', 'enabled', e.target.checked)}
+                      className="rounded text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <span>Bật phần này</span>
+                  </label>
+                </div>
+                <input
+                  type="text"
+                  value={partConfigs.part1?.name || 'Phần I (TN 4 lựa chọn)'}
+                  onChange={(e) => handleUpdatePartConfig('part1', 'name', e.target.value)}
+                  className="w-full mt-1.5 px-2 py-1 bg-white border border-indigo-200 rounded text-xs font-bold text-slate-800"
+                  placeholder="Tên Phần I..."
+                />
+              </div>
+
+              <div className="space-y-2 text-xs">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-slate-600 font-medium">Điểm mỗi câu:</span>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      step="0.05"
+                      min="0"
+                      value={p1_pts}
+                      onChange={(e) => handleUpdatePartConfig('part1', 'pointsPerQuestion', parseFloat(e.target.value) || 0)}
+                      className="w-16 px-2 py-1 bg-white border border-indigo-200 rounded text-right font-extrabold text-indigo-700 focus:outline-hidden focus:border-indigo-500"
+                    />
+                    <span className="text-slate-500 font-bold">đ</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-slate-600 font-medium">Số câu mục tiêu:</span>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      min="0"
+                      value={p1_target}
+                      onChange={(e) => handleUpdatePartConfig('part1', 'targetQuestions', parseInt(e.target.value) || 0)}
+                      className="w-16 px-2 py-1 bg-white border border-indigo-200 rounded text-right font-extrabold text-slate-800 focus:outline-hidden focus:border-indigo-500"
+                    />
+                    <span className="text-slate-500">câu</span>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-indigo-200/60 flex items-center justify-between font-bold">
+                  <span className="text-slate-700">Tổng điểm phần:</span>
+                  <span className="text-indigo-700 font-black text-sm">{(p1_target * p1_pts).toFixed(2)} đ</span>
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-slate-500">
+                  <span>Thực tế trong Ma trận:</span>
+                  <span className={`font-bold ${totalP1 === p1_target ? 'text-emerald-600' : 'text-amber-600'}`}>
+                    {totalP1} / {p1_target} câu ({totalPointsP1.toFixed(2)}đ)
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* PART 2 CARD */}
+            <div className="bg-blue-50/50 p-3.5 rounded-xl border border-blue-200 flex flex-col justify-between space-y-3">
+              <div>
+                <div className="flex items-center justify-between">
+                  <span className="font-extrabold text-xs text-blue-900">PHẦN II</span>
+                  <label className="flex items-center gap-1 text-[11px] text-slate-600 font-semibold cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={partConfigs.part2?.enabled ?? true}
+                      onChange={(e) => handleUpdatePartConfig('part2', 'enabled', e.target.checked)}
+                      className="rounded text-blue-600 focus:ring-blue-500"
+                    />
+                    <span>Bật phần này</span>
+                  </label>
+                </div>
+                <input
+                  type="text"
+                  value={partConfigs.part2?.name || 'Phần II (TN Đúng/Sai)'}
+                  onChange={(e) => handleUpdatePartConfig('part2', 'name', e.target.value)}
+                  className="w-full mt-1.5 px-2 py-1 bg-white border border-blue-200 rounded text-xs font-bold text-slate-800"
+                  placeholder="Tên Phần II..."
+                />
+              </div>
+
+              <div className="space-y-2 text-xs">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-slate-600 font-medium">Điểm mỗi câu:</span>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      value={p2_pts}
+                      onChange={(e) => handleUpdatePartConfig('part2', 'pointsPerQuestion', parseFloat(e.target.value) || 0)}
+                      className="w-16 px-2 py-1 bg-white border border-blue-200 rounded text-right font-extrabold text-blue-700 focus:outline-hidden focus:border-blue-500"
+                    />
+                    <span className="text-slate-500 font-bold">đ</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-slate-600 font-medium">Số câu mục tiêu:</span>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      min="0"
+                      value={p2_target}
+                      onChange={(e) => handleUpdatePartConfig('part2', 'targetQuestions', parseInt(e.target.value) || 0)}
+                      className="w-16 px-2 py-1 bg-white border border-blue-200 rounded text-right font-extrabold text-slate-800 focus:outline-hidden focus:border-blue-500"
+                    />
+                    <span className="text-slate-500">câu</span>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-blue-200/60 flex items-center justify-between font-bold">
+                  <span className="text-slate-700">Tổng điểm phần:</span>
+                  <span className="text-blue-700 font-black text-sm">{(p2_target * p2_pts).toFixed(2)} đ</span>
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-slate-500">
+                  <span>Thực tế trong Ma trận:</span>
+                  <span className={`font-bold ${totalP2 === p2_target ? 'text-emerald-600' : 'text-amber-600'}`}>
+                    {totalP2} / {p2_target} câu ({totalPointsP2.toFixed(2)}đ)
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* PART 3 CARD */}
+            <div className="bg-emerald-50/50 p-3.5 rounded-xl border border-emerald-200 flex flex-col justify-between space-y-3">
+              <div>
+                <div className="flex items-center justify-between">
+                  <span className="font-extrabold text-xs text-emerald-900">PHẦN III</span>
+                  <label className="flex items-center gap-1 text-[11px] text-slate-600 font-semibold cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={partConfigs.part3?.enabled ?? true}
+                      onChange={(e) => handleUpdatePartConfig('part3', 'enabled', e.target.checked)}
+                      className="rounded text-emerald-600 focus:ring-emerald-500"
+                    />
+                    <span>Bật phần này</span>
+                  </label>
+                </div>
+                <input
+                  type="text"
+                  value={partConfigs.part3?.name || 'Phần III (Trả lời ngắn)'}
+                  onChange={(e) => handleUpdatePartConfig('part3', 'name', e.target.value)}
+                  className="w-full mt-1.5 px-2 py-1 bg-white border border-emerald-200 rounded text-xs font-bold text-slate-800"
+                  placeholder="Tên Phần III..."
+                />
+              </div>
+
+              <div className="space-y-2 text-xs">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-slate-600 font-medium">Điểm mỗi câu:</span>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      step="0.05"
+                      min="0"
+                      value={p3_pts}
+                      onChange={(e) => handleUpdatePartConfig('part3', 'pointsPerQuestion', parseFloat(e.target.value) || 0)}
+                      className="w-16 px-2 py-1 bg-white border border-emerald-200 rounded text-right font-extrabold text-emerald-700 focus:outline-hidden focus:border-emerald-500"
+                    />
+                    <span className="text-slate-500 font-bold">đ</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-slate-600 font-medium">Số câu mục tiêu:</span>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      min="0"
+                      value={p3_target}
+                      onChange={(e) => handleUpdatePartConfig('part3', 'targetQuestions', parseInt(e.target.value) || 0)}
+                      className="w-16 px-2 py-1 bg-white border border-emerald-200 rounded text-right font-extrabold text-slate-800 focus:outline-hidden focus:border-emerald-500"
+                    />
+                    <span className="text-slate-500">câu</span>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-emerald-200/60 flex items-center justify-between font-bold">
+                  <span className="text-slate-700">Tổng điểm phần:</span>
+                  <span className="text-emerald-700 font-black text-sm">{(p3_target * p3_pts).toFixed(2)} đ</span>
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-slate-500">
+                  <span>Thực tế trong Ma trận:</span>
+                  <span className={`font-bold ${totalP3 === p3_target ? 'text-emerald-600' : 'text-amber-600'}`}>
+                    {totalP3} / {p3_target} câu ({totalPointsP3.toFixed(2)}đ)
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* PART 4 CARD */}
+            <div className="bg-amber-50/50 p-3.5 rounded-xl border border-amber-200 flex flex-col justify-between space-y-3">
+              <div>
+                <div className="flex items-center justify-between">
+                  <span className="font-extrabold text-xs text-amber-900">PHẦN IV</span>
+                  <label className="flex items-center gap-1 text-[11px] text-slate-600 font-semibold cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={partConfigs.part4?.enabled ?? true}
+                      onChange={(e) => handleUpdatePartConfig('part4', 'enabled', e.target.checked)}
+                      className="rounded text-amber-600 focus:ring-amber-500"
+                    />
+                    <span>Bật phần này</span>
+                  </label>
+                </div>
+                <input
+                  type="text"
+                  value={partConfigs.part4?.name || 'Phần IV (Tự luận)'}
+                  onChange={(e) => handleUpdatePartConfig('part4', 'name', e.target.value)}
+                  className="w-full mt-1.5 px-2 py-1 bg-white border border-amber-200 rounded text-xs font-bold text-slate-800"
+                  placeholder="Tên Phần IV..."
+                />
+              </div>
+
+              <div className="space-y-2 text-xs">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-slate-600 font-medium">Điểm mỗi câu:</span>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      step="0.25"
+                      min="0"
+                      value={p4_pts}
+                      onChange={(e) => handleUpdatePartConfig('part4', 'pointsPerQuestion', parseFloat(e.target.value) || 0)}
+                      className="w-16 px-2 py-1 bg-white border border-amber-200 rounded text-right font-extrabold text-amber-700 focus:outline-hidden focus:border-amber-500"
+                    />
+                    <span className="text-slate-500 font-bold">đ</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-slate-600 font-medium">Số câu mục tiêu:</span>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      min="0"
+                      value={p4_target}
+                      onChange={(e) => handleUpdatePartConfig('part4', 'targetQuestions', parseInt(e.target.value) || 0)}
+                      className="w-16 px-2 py-1 bg-white border border-amber-200 rounded text-right font-extrabold text-slate-800 focus:outline-hidden focus:border-amber-500"
+                    />
+                    <span className="text-slate-500">câu</span>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-amber-200/60 flex items-center justify-between font-bold">
+                  <span className="text-slate-700">Tổng điểm phần:</span>
+                  <span className="text-amber-700 font-black text-sm">{(p4_target * p4_pts).toFixed(2)} đ</span>
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-slate-500">
+                  <span>Thực tế trong Ma trận:</span>
+                  <span className={`font-bold ${totalP4 === p4_target ? 'text-emerald-600' : 'text-amber-600'}`}>
+                    {totalP4} / {p4_target} câu ({totalPointsP4.toFixed(2)}đ)
+                  </span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          {/* Target Sum Summary Banner */}
+          <div className="p-3 bg-slate-100 rounded-xl flex flex-wrap items-center justify-between text-xs font-semibold text-slate-700">
+            <div className="flex items-center gap-2">
+              <Check className="w-4 h-4 text-indigo-600" />
+              <span>Tổng mục tiêu toàn đề thi: <strong>{grandTargetQuestions} câu</strong></span>
+              <span>•</span>
+              <span>Tổng thang điểm: <strong className={grandTargetPoints === 10 ? 'text-emerald-700 font-black' : 'text-amber-700 font-black'}>{grandTargetPoints.toFixed(2)} / 10.0 đ</strong></span>
+            </div>
+            <div className="text-slate-500 text-[11px]">
+              Tự động cập nhật bảng Ma trận và Bản đặc tả tương ứng.
+            </div>
+          </div>
+
+        </div>
+      )}
 
       {/* Sync / Notification Toast */}
       {specSyncNotification && (
@@ -426,14 +923,223 @@ export const MatrixStep: React.FC<MatrixStepProps> = ({
           <div className="overflow-x-auto">
             <table className="w-full text-xs text-left border-collapse">
               <thead>
-                <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+                <tr className="bg-slate-100 text-slate-800 font-bold border-b border-slate-200">
                   <th rowSpan={2} className="p-2.5 text-center border-r border-slate-200 w-12">TT</th>
                   <th rowSpan={2} className="p-2.5 border-r border-slate-200 min-w-[180px]">Chủ đề / Chương</th>
                   <th rowSpan={2} className="p-2.5 border-r border-slate-200 min-w-[200px]">Nội dung / Đơn vị kiến thức</th>
-                  <th colSpan={4} className="p-2 text-center bg-indigo-50/70 border-r border-slate-200">Phần I (TN 4 lựa chọn - 0.25đ)</th>
-                  <th colSpan={4} className="p-2 text-center bg-blue-50/70 border-r border-slate-200">Phần II (Đúng/Sai - 1.0đ)</th>
-                  <th colSpan={4} className="p-2 text-center bg-emerald-50/70 border-r border-slate-200">Phần III (Trả lời ngắn - 0.5đ)</th>
-                  <th colSpan={4} className="p-2 text-center bg-amber-50/70 border-r border-slate-200">Phần IV (Tự luận)</th>
+                  
+                  {/* Part 1 Header with Inline Config */}
+                  <th colSpan={4} className="p-2 bg-indigo-50/90 border-r border-slate-200">
+                    <div className="flex flex-col gap-1.5 text-left">
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="font-extrabold text-indigo-950 text-xs truncate" title={partConfigs.part1?.name}>
+                          {partConfigs.part1?.name || 'Phần I'}
+                        </span>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-bold shrink-0 ${
+                          totalP1 === p1_target 
+                            ? 'bg-emerald-100 text-emerald-800' 
+                            : totalP1 < p1_target 
+                              ? 'bg-amber-100 text-amber-800' 
+                              : 'bg-rose-100 text-rose-800'
+                        }`}>
+                          {totalP1}/{p1_target} câu
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center justify-between gap-1.5 text-[11px] bg-white/90 p-1.5 rounded-lg border border-indigo-100 shadow-2xs">
+                        <div className="flex items-center gap-1">
+                          <span className="text-slate-500 font-medium">Điểm/câu:</span>
+                          <input
+                            type="number"
+                            step="0.05"
+                            min="0"
+                            value={p1_pts}
+                            onChange={(e) => handleUpdatePartConfig('part1', 'pointsPerQuestion', parseFloat(e.target.value) || 0)}
+                            className="w-12 px-1 py-0.5 text-center font-bold text-indigo-700 bg-white border border-indigo-200 rounded focus:ring-1 focus:ring-indigo-500 focus:outline-hidden text-xs"
+                            title="Số điểm mỗi câu Phần I"
+                          />
+                          <span className="text-indigo-900 font-bold">đ</span>
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                          <span className="text-slate-500 font-medium">Số câu:</span>
+                          <input
+                            type="number"
+                            min="0"
+                            value={p1_target}
+                            onChange={(e) => handleUpdatePartConfig('part1', 'targetQuestions', parseInt(e.target.value) || 0)}
+                            className="w-10 px-1 py-0.5 text-center font-bold text-slate-800 bg-white border border-indigo-200 rounded focus:ring-1 focus:ring-indigo-500 focus:outline-hidden text-xs"
+                            title="Số câu mục tiêu Phần I"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between text-[10px] text-indigo-900 font-semibold px-0.5">
+                        <span>Tổng điểm: <strong className="text-indigo-700 font-bold">{totalPointsP1.toFixed(2)}đ</strong></span>
+                        <span className="text-slate-500">(MT: {(p1_target * p1_pts).toFixed(2)}đ)</span>
+                      </div>
+                    </div>
+                  </th>
+
+                  {/* Part 2 Header with Inline Config */}
+                  <th colSpan={4} className="p-2 bg-blue-50/90 border-r border-slate-200">
+                    <div className="flex flex-col gap-1.5 text-left">
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="font-extrabold text-blue-950 text-xs truncate" title={partConfigs.part2?.name}>
+                          {partConfigs.part2?.name || 'Phần II'}
+                        </span>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-bold shrink-0 ${
+                          totalP2 === p2_target 
+                            ? 'bg-emerald-100 text-emerald-800' 
+                            : totalP2 < p2_target 
+                              ? 'bg-amber-100 text-amber-800' 
+                              : 'bg-rose-100 text-rose-800'
+                        }`}>
+                          {totalP2}/{p2_target} câu
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center justify-between gap-1.5 text-[11px] bg-white/90 p-1.5 rounded-lg border border-blue-100 shadow-2xs">
+                        <div className="flex items-center gap-1">
+                          <span className="text-slate-500 font-medium">Điểm/câu:</span>
+                          <input
+                            type="number"
+                            step="0.1"
+                            min="0"
+                            value={p2_pts}
+                            onChange={(e) => handleUpdatePartConfig('part2', 'pointsPerQuestion', parseFloat(e.target.value) || 0)}
+                            className="w-12 px-1 py-0.5 text-center font-bold text-blue-700 bg-white border border-blue-200 rounded focus:ring-1 focus:ring-blue-500 focus:outline-hidden text-xs"
+                            title="Số điểm mỗi câu Phần II"
+                          />
+                          <span className="text-blue-900 font-bold">đ</span>
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                          <span className="text-slate-500 font-medium">Số câu:</span>
+                          <input
+                            type="number"
+                            min="0"
+                            value={p2_target}
+                            onChange={(e) => handleUpdatePartConfig('part2', 'targetQuestions', parseInt(e.target.value) || 0)}
+                            className="w-10 px-1 py-0.5 text-center font-bold text-slate-800 bg-white border border-blue-200 rounded focus:ring-1 focus:ring-blue-500 focus:outline-hidden text-xs"
+                            title="Số câu mục tiêu Phần II"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between text-[10px] text-blue-900 font-semibold px-0.5">
+                        <span>Tổng điểm: <strong className="text-blue-700 font-bold">{totalPointsP2.toFixed(2)}đ</strong></span>
+                        <span className="text-slate-500">(MT: {(p2_target * p2_pts).toFixed(2)}đ)</span>
+                      </div>
+                    </div>
+                  </th>
+
+                  {/* Part 3 Header with Inline Config */}
+                  <th colSpan={4} className="p-2 bg-emerald-50/90 border-r border-slate-200">
+                    <div className="flex flex-col gap-1.5 text-left">
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="font-extrabold text-emerald-950 text-xs truncate" title={partConfigs.part3?.name}>
+                          {partConfigs.part3?.name || 'Phần III'}
+                        </span>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-bold shrink-0 ${
+                          totalP3 === p3_target 
+                            ? 'bg-emerald-100 text-emerald-800' 
+                            : totalP3 < p3_target 
+                              ? 'bg-amber-100 text-amber-800' 
+                              : 'bg-rose-100 text-rose-800'
+                        }`}>
+                          {totalP3}/{p3_target} câu
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center justify-between gap-1.5 text-[11px] bg-white/90 p-1.5 rounded-lg border border-emerald-100 shadow-2xs">
+                        <div className="flex items-center gap-1">
+                          <span className="text-slate-500 font-medium">Điểm/câu:</span>
+                          <input
+                            type="number"
+                            step="0.05"
+                            min="0"
+                            value={p3_pts}
+                            onChange={(e) => handleUpdatePartConfig('part3', 'pointsPerQuestion', parseFloat(e.target.value) || 0)}
+                            className="w-12 px-1 py-0.5 text-center font-bold text-emerald-700 bg-white border border-emerald-200 rounded focus:ring-1 focus:ring-emerald-500 focus:outline-hidden text-xs"
+                            title="Số điểm mỗi câu Phần III"
+                          />
+                          <span className="text-emerald-900 font-bold">đ</span>
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                          <span className="text-slate-500 font-medium">Số câu:</span>
+                          <input
+                            type="number"
+                            min="0"
+                            value={p3_target}
+                            onChange={(e) => handleUpdatePartConfig('part3', 'targetQuestions', parseInt(e.target.value) || 0)}
+                            className="w-10 px-1 py-0.5 text-center font-bold text-slate-800 bg-white border border-emerald-200 rounded focus:ring-1 focus:ring-emerald-500 focus:outline-hidden text-xs"
+                            title="Số câu mục tiêu Phần III"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between text-[10px] text-emerald-900 font-semibold px-0.5">
+                        <span>Tổng điểm: <strong className="text-emerald-700 font-bold">{totalPointsP3.toFixed(2)}đ</strong></span>
+                        <span className="text-slate-500">(MT: {(p3_target * p3_pts).toFixed(2)}đ)</span>
+                      </div>
+                    </div>
+                  </th>
+
+                  {/* Part 4 Header with Inline Config */}
+                  <th colSpan={4} className="p-2 bg-amber-50/90 border-r border-slate-200">
+                    <div className="flex flex-col gap-1.5 text-left">
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="font-extrabold text-amber-950 text-xs truncate" title={partConfigs.part4?.name}>
+                          {partConfigs.part4?.name || 'Phần IV (Tự luận)'}
+                        </span>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-bold shrink-0 ${
+                          totalP4 === p4_target 
+                            ? 'bg-emerald-100 text-emerald-800' 
+                            : totalP4 < p4_target 
+                              ? 'bg-amber-100 text-amber-800' 
+                              : 'bg-rose-100 text-rose-800'
+                        }`}>
+                          {totalP4}/{p4_target} câu
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center justify-between gap-1.5 text-[11px] bg-white/90 p-1.5 rounded-lg border border-amber-100 shadow-2xs">
+                        <div className="flex items-center gap-1">
+                          <span className="text-slate-500 font-medium">Điểm/câu:</span>
+                          <input
+                            type="number"
+                            step="0.25"
+                            min="0"
+                            value={p4_pts}
+                            onChange={(e) => handleUpdatePartConfig('part4', 'pointsPerQuestion', parseFloat(e.target.value) || 0)}
+                            className="w-12 px-1 py-0.5 text-center font-bold text-amber-700 bg-white border border-amber-200 rounded focus:ring-1 focus:ring-amber-500 focus:outline-hidden text-xs"
+                            title="Số điểm mỗi câu Phần IV"
+                          />
+                          <span className="text-amber-900 font-bold">đ</span>
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                          <span className="text-slate-500 font-medium">Số câu:</span>
+                          <input
+                            type="number"
+                            min="0"
+                            value={p4_target}
+                            onChange={(e) => handleUpdatePartConfig('part4', 'targetQuestions', parseInt(e.target.value) || 0)}
+                            className="w-10 px-1 py-0.5 text-center font-bold text-slate-800 bg-white border border-amber-200 rounded focus:ring-1 focus:ring-amber-500 focus:outline-hidden text-xs"
+                            title="Số câu mục tiêu Phần IV"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between text-[10px] text-amber-900 font-semibold px-0.5">
+                        <span>Tổng điểm: <strong className="text-amber-700 font-bold">{totalPointsP4.toFixed(2)}đ</strong></span>
+                        <span className="text-slate-500">(MT: {(p4_target * p4_pts).toFixed(2)}đ)</span>
+                      </div>
+                    </div>
+                  </th>
+
                   <th rowSpan={2} className="p-2.5 text-center border-r border-slate-200 w-20">Điểm</th>
                   <th rowSpan={2} className="p-2.5 text-center w-12">Xóa</th>
                 </tr>
@@ -559,7 +1265,10 @@ export const MatrixStep: React.FC<MatrixStepProps> = ({
                 {/* FOOTER ROW 1: TỔNG SỐ CÂU */}
                 <tr className="bg-slate-100 font-bold text-slate-900 border-t-2 border-slate-300">
                   <td colSpan={3} className="p-2.5 text-right uppercase tracking-wider border-r border-slate-200 text-xs">
-                    Tổng số câu hỏi:
+                    <div className="flex flex-col items-end">
+                      <span>Tổng số câu hỏi:</span>
+                      <span className="text-[10px] text-slate-500 font-normal">Mục tiêu: {grandTargetQuestions} câu</span>
+                    </div>
                   </td>
                   {/* Part 1 */}
                   <td className="p-1.5 text-center text-indigo-900 border-r border-slate-200 font-bold bg-indigo-50/50">{totalP1_nb}</td>
@@ -581,8 +1290,11 @@ export const MatrixStep: React.FC<MatrixStepProps> = ({
                   <td className="p-1.5 text-center text-amber-900 border-r border-slate-200 font-bold bg-amber-50/50">{totalP4_th}</td>
                   <td className="p-1.5 text-center text-amber-900 border-r border-slate-200 font-bold bg-amber-50/50">{totalP4_vd}</td>
                   <td className="p-1.5 text-center text-amber-900 border-r border-slate-200 font-bold bg-amber-50/50">{totalP4_vdc}</td>
-                  <td className="p-2 text-center text-xs font-extrabold text-slate-800 border-r border-slate-200">
-                    {grandTotalQuestions} câu
+                  <td className="p-2 text-center text-xs font-extrabold border-r border-slate-200">
+                    <span className={grandTotalQuestions === grandTargetQuestions ? 'text-emerald-700 font-black' : 'text-amber-700 font-black'}>
+                      {grandTotalQuestions} câu
+                    </span>
+                    <span className="text-[10px] text-slate-400 block font-normal">/ {grandTargetQuestions} MT</span>
                   </td>
                   <td></td>
                 </tr>
@@ -590,30 +1302,35 @@ export const MatrixStep: React.FC<MatrixStepProps> = ({
                 {/* FOOTER ROW 2: TỔNG ĐIỂM THEO CỘT */}
                 <tr className="bg-slate-50 font-semibold text-slate-700 border-t border-slate-200">
                   <td colSpan={3} className="p-2 text-right uppercase tracking-wider border-r border-slate-200 text-[11px] text-slate-600">
-                    Tổng điểm từng cột:
+                    <div className="flex flex-col items-end">
+                      <span>Tổng điểm từng cột:</span>
+                      <span className="text-[10px] text-slate-400 font-normal">Thang điểm chuẩn: 10.0 đ</span>
+                    </div>
                   </td>
-                  {/* Part 1 (0.25đ/câu) */}
+                  {/* Part 1 */}
                   <td className="p-1 text-center border-r border-slate-200 text-[11px] text-indigo-900">{ptsP1_nb.toFixed(2)}đ</td>
                   <td className="p-1 text-center border-r border-slate-200 text-[11px] text-indigo-900">{ptsP1_th.toFixed(2)}đ</td>
                   <td className="p-1 text-center border-r border-slate-200 text-[11px] text-indigo-900">{ptsP1_vd.toFixed(2)}đ</td>
                   <td className="p-1 text-center border-r border-slate-200 text-[11px] text-indigo-900">{ptsP1_vdc.toFixed(2)}đ</td>
-                  {/* Part 2 (1.0đ/câu) */}
+                  {/* Part 2 */}
                   <td className="p-1 text-center border-r border-slate-200 text-[11px] text-blue-900">{ptsP2_nb.toFixed(1)}đ</td>
                   <td className="p-1 text-center border-r border-slate-200 text-[11px] text-blue-900">{ptsP2_th.toFixed(1)}đ</td>
                   <td className="p-1 text-center border-r border-slate-200 text-[11px] text-blue-900">{ptsP2_vd.toFixed(1)}đ</td>
                   <td className="p-1 text-center border-r border-slate-200 text-[11px] text-blue-900">{ptsP2_vdc.toFixed(1)}đ</td>
-                  {/* Part 3 (0.5đ/câu) */}
+                  {/* Part 3 */}
                   <td className="p-1 text-center border-r border-slate-200 text-[11px] text-emerald-900">{ptsP3_nb.toFixed(1)}đ</td>
                   <td className="p-1 text-center border-r border-slate-200 text-[11px] text-emerald-900">{ptsP3_th.toFixed(1)}đ</td>
                   <td className="p-1 text-center border-r border-slate-200 text-[11px] text-emerald-900">{ptsP3_vd.toFixed(1)}đ</td>
                   <td className="p-1 text-center border-r border-slate-200 text-[11px] text-emerald-900">{ptsP3_vdc.toFixed(1)}đ</td>
-                  {/* Part 4 (Tự luận) */}
+                  {/* Part 4 */}
                   <td className="p-1 text-center border-r border-slate-200 text-[11px] text-amber-900">{ptsP4_nb.toFixed(1)}đ</td>
                   <td className="p-1 text-center border-r border-slate-200 text-[11px] text-amber-900">{ptsP4_th.toFixed(1)}đ</td>
                   <td className="p-1 text-center border-r border-slate-200 text-[11px] text-amber-900">{ptsP4_vd.toFixed(1)}đ</td>
                   <td className="p-1 text-center border-r border-slate-200 text-[11px] text-amber-900">{ptsP4_vdc.toFixed(1)}đ</td>
                   <td className="p-2 text-center text-xs font-bold text-indigo-700 bg-indigo-50/50 border-r border-slate-200">
-                    {grandTotalPoints.toFixed(2)} đ
+                    <span className={grandTotalPoints === 10 ? 'text-emerald-700 font-black' : 'text-amber-700 font-black'}>
+                      {grandTotalPoints.toFixed(2)} đ
+                    </span>
                   </td>
                   <td></td>
                 </tr>

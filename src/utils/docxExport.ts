@@ -140,6 +140,18 @@ export async function exportExamToDocx(project: ExamProject, targetVariantCode: 
     ],
   });
 
+  const partConfigs = header.partConfigs || {
+    part1: { name: 'Phần I (TN 4 lựa chọn)', pointsPerQuestion: 0.25, targetQuestions: 12 },
+    part2: { name: 'Phần II (Đúng/Sai)', pointsPerQuestion: 1.0, targetQuestions: 4 },
+    part3: { name: 'Phần III (Trả lời ngắn)', pointsPerQuestion: 0.5, targetQuestions: 6 },
+    part4: { name: 'Phần IV (Tự luận)', pointsPerQuestion: 1.0, targetQuestions: 0 },
+  };
+
+  const p1_pts = partConfigs.part1?.pointsPerQuestion ?? 0.25;
+  const p2_pts = partConfigs.part2?.pointsPerQuestion ?? 1.0;
+  const p3_pts = partConfigs.part3?.pointsPerQuestion ?? 0.5;
+  const p4_pts = partConfigs.part4?.pointsPerQuestion ?? 1.0;
+
   // Build Document Sections
   const docParagraphs: (Paragraph | Table)[] = [];
 
@@ -150,12 +162,13 @@ export async function exportExamToDocx(project: ExamProject, targetVariantCode: 
   // Part 1 Questions
   const part1 = questions.filter(q => q.type === 'multiple_choice');
   if (part1.length > 0) {
+    const p1TotalPts = (part1.length * p1_pts).toFixed(2);
     docParagraphs.push(
       new Paragraph({
         heading: HeadingLevel.HEADING_2,
         children: [
           new TextRun({
-            text: `PHẦN I. Câu trắc nghiệm nhiều phương án lựa chọn (${(part1.length * 0.25).toFixed(2)} điểm)`,
+            text: `PHẦN I. Câu trắc nghiệm nhiều phương án lựa chọn (${p1TotalPts} điểm - ${p1_pts}đ/câu)`,
             bold: true,
             font: 'Times New Roman',
             size: 24,
@@ -168,7 +181,7 @@ export async function exportExamToDocx(project: ExamProject, targetVariantCode: 
       new Paragraph({
         children: [
           new TextRun({
-            text: 'Thí sinh trả lời từ câu 1 đến câu ' + part1.length + '. Mỗi câu hỏi thí sinh chỉ chọn một phương án.',
+            text: `Thí sinh trả lời từ câu 1 đến câu ${part1.length}. Mỗi câu hỏi thí sinh chỉ chọn một phương án đúng nhất.`,
             italics: true,
             font: 'Times New Roman',
             size: 22,
@@ -209,12 +222,13 @@ export async function exportExamToDocx(project: ExamProject, targetVariantCode: 
   // Part 2 Questions: Đúng / Sai
   const part2 = questions.filter(q => q.type === 'true_false');
   if (part2.length > 0) {
+    const p2TotalPts = (part2.length * p2_pts).toFixed(2);
     docParagraphs.push(
       new Paragraph({
         heading: HeadingLevel.HEADING_2,
         children: [
           new TextRun({
-            text: `PHẦN II. Câu trắc nghiệm đúng sai (${(part2.length * 1.0).toFixed(2)} điểm)`,
+            text: `PHẦN II. Câu trắc nghiệm đúng sai (${p2TotalPts} điểm - ${p2_pts}đ/câu)`,
             bold: true,
             font: 'Times New Roman',
             size: 24,
@@ -227,7 +241,7 @@ export async function exportExamToDocx(project: ExamProject, targetVariantCode: 
       new Paragraph({
         children: [
           new TextRun({
-            text: 'Thí sinh trả lời từ câu 1 đến câu ' + part2.length + '. Trong mỗi ý a), b), c), d) ở mỗi câu, thí sinh chọn đúng hoặc sai.',
+            text: `Thí sinh trả lời từ câu 1 đến câu ${part2.length}. Trong mỗi ý a), b), c), d) ở mỗi câu, thí sinh chọn đúng hoặc sai.`,
             italics: true,
             font: 'Times New Roman',
             size: 22,
@@ -268,12 +282,13 @@ export async function exportExamToDocx(project: ExamProject, targetVariantCode: 
   // Part 3 Questions: Trả lời ngắn
   const part3 = questions.filter(q => q.type === 'short_answer');
   if (part3.length > 0) {
+    const p3TotalPts = (part3.length * p3_pts).toFixed(2);
     docParagraphs.push(
       new Paragraph({
         heading: HeadingLevel.HEADING_2,
         children: [
           new TextRun({
-            text: `PHẦN III. Câu trắc nghiệm trả lời ngắn (${(part3.length * 0.5).toFixed(2)} điểm)`,
+            text: `PHẦN III. Câu trắc nghiệm trả lời ngắn (${p3TotalPts} điểm - ${p3_pts}đ/câu)`,
             bold: true,
             font: 'Times New Roman',
             size: 24,
@@ -286,7 +301,7 @@ export async function exportExamToDocx(project: ExamProject, targetVariantCode: 
       new Paragraph({
         children: [
           new TextRun({
-            text: 'Thí sinh trả lời từ câu 1 đến câu ' + part3.length + '. Điền đáp án hoặc kết quả tính toán vào ô tương ứng.',
+            text: `Thí sinh trả lời từ câu 1 đến câu ${part3.length}. Điền đáp án hoặc kết quả tính toán vào ô tương ứng.`,
             italics: true,
             font: 'Times New Roman',
             size: 22,
@@ -312,12 +327,13 @@ export async function exportExamToDocx(project: ExamProject, targetVariantCode: 
   // Part 4 Questions: Tự luận
   const part4 = questions.filter(q => q.type === 'essay');
   if (part4.length > 0) {
+    const p4TotalPts = part4.reduce((acc, q) => acc + (q.points || p4_pts || 1), 0).toFixed(2);
     docParagraphs.push(
       new Paragraph({
         heading: HeadingLevel.HEADING_2,
         children: [
           new TextRun({
-            text: `PHẦN IV. Tự luận (${part4.reduce((acc, q) => acc + (q.points || 1), 0).toFixed(2)} điểm)`,
+            text: `PHẦN IV. Tự luận (${p4TotalPts} điểm)`,
             bold: true,
             font: 'Times New Roman',
             size: 24,

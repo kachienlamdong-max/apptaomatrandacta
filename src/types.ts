@@ -110,6 +110,21 @@ export interface ExamQuestion {
   explanation: string; // Lời giải chi tiết
 }
 
+export interface PartConfig {
+  name: string; // Tên phần
+  pointsPerQuestion: number; // Điểm mỗi câu (e.g. 0.25, 0.5, 1.0)
+  targetQuestions: number; // Số câu mục tiêu (e.g. 12, 4, 6, 2)
+  enabled: boolean; // Bật / tắt phần này
+  description?: string;
+}
+
+export interface ExamPartConfigs {
+  part1: PartConfig;
+  part2: PartConfig;
+  part3: PartConfig;
+  part4: PartConfig;
+}
+
 export interface ExamHeaderConfig {
   provinceOrDept: string; // SỞ GD&ĐT TỈNH/TP...
   schoolName: string; // TRƯỜNG THPT/THCS/TIỂU HỌC...
@@ -121,6 +136,7 @@ export interface ExamHeaderConfig {
   timeDuration: number; // 45, 60, 90 phút
   structureOption: StructureOption;
   teacherName: string;
+  partConfigs?: ExamPartConfigs;
 }
 
 export interface ShuffledExamVariant {

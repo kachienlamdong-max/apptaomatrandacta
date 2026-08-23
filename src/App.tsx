@@ -274,6 +274,7 @@ export default function App() {
         {currentTab === 'matrix' && (
           <MatrixStep
             header={project.header}
+            onChangeHeader={(newHeader) => setProject({ ...project, header: newHeader })}
             matrix={project.matrix}
             onChangeMatrix={(newMatrix) => setProject({ ...project, matrix: newMatrix })}
             specification={project.specification}
