@@ -76,6 +76,55 @@ export default function App() {
     localStorage.setItem('edtech_exam_project', JSON.stringify(project));
   }, [project]);
 
+  // Proactive consistency check: Ensure questions match the current project.header.subject
+  useEffect(() => {
+    const activeSubjectKey = normalizeSubjectKey(project.header.subject);
+    const questions = project.sampleExamQuestions || [];
+    
+    if (questions.length === 0) {
+      const { matrix, specification } = generateInitialMatrixAndSpecForSubject(project.header.subject, project.header.grade);
+      const newQuestions = generateConsistentQuestionsFromMatrixAndSpec(project.header, matrix, specification);
+      const shuffled = generateShuffledExamVariants(newQuestions);
+      setProject(prev => ({
+        ...prev,
+        sampleExamQuestions: newQuestions,
+        shuffledVariants: shuffled,
+        updatedAt: new Date().toISOString()
+      }));
+      return;
+    }
+
+    const firstQ = questions[0];
+    const qTopic = (firstQ.topic || '').toLowerCase();
+    const qContent = (firstQ.content || '').toLowerCase();
+
+    // Check if the current questions belong to another subject
+    let isMismatch = false;
+    if (activeSubjectKey !== 'toan' && (qTopic.includes('hàm số') || qContent.includes('hàm số') || qTopic.includes('đạo hàm'))) {
+      isMismatch = true;
+    } else if (activeSubjectKey === 'dia-li' && !qTopic.includes('địa') && !qTopic.includes('vùng') && !qTopic.includes('lãnh thổ') && !qTopic.includes('dân cư') && !qTopic.includes('kinh tế')) {
+      isMismatch = true;
+    } else if (activeSubjectKey === 'lich-su' && !qTopic.includes('lịch sử') && !qTopic.includes('chiến tranh') && !qTopic.includes('cách mạng') && !qTopic.includes('thế giới')) {
+      isMismatch = true;
+    } else if (activeSubjectKey === 'tieng-anh' && !qContent.includes('choose') && !qContent.includes('passage') && !qContent.includes('letter') && !qContent.includes('read')) {
+      isMismatch = true;
+    }
+
+    if (isMismatch) {
+      const { matrix, specification } = generateInitialMatrixAndSpecForSubject(project.header.subject, project.header.grade);
+      const newQuestions = generateConsistentQuestionsFromMatrixAndSpec(project.header, matrix, specification);
+      const shuffled = generateShuffledExamVariants(newQuestions);
+      setProject(prev => ({
+        ...prev,
+        matrix: matrix,
+        specification: specification,
+        sampleExamQuestions: newQuestions,
+        shuffledVariants: shuffled,
+        updatedAt: new Date().toISOString()
+      }));
+    }
+  }, [project.header.subject, project.header.grade]);
+
   // Sync teacher to local storage and server
   const handleSaveTeacher = async (t: TeacherProfile) => {
     setTeacher(t);
@@ -120,8 +169,8 @@ export default function App() {
     const oldSubjectKey = normalizeSubjectKey(project.header.subject);
     const newSubjectKey = normalizeSubjectKey(newHeader.subject);
 
-    // If subject changed, auto-adapt matrix, spec and questions to match new subject
-    if (oldSubjectKey !== newSubjectKey) {
+    // If subject or grade changed, auto-adapt matrix, spec and questions to match new subject
+    if (oldSubjectKey !== newSubjectKey || project.header.grade !== newHeader.grade) {
       const { matrix, specification } = generateInitialMatrixAndSpecForSubject(newHeader.subject, newHeader.grade);
       const newQuestions = generateConsistentQuestionsFromMatrixAndSpec(newHeader, matrix, specification);
       const shuffled = generateShuffledExamVariants(newQuestions);
@@ -135,7 +184,7 @@ export default function App() {
         shuffledVariants: shuffled,
         updatedAt: new Date().toISOString(),
       }));
-      showToast(`🔄 Đã chuyển sang môn ${newHeader.subject} & tự động nạp Ma trận, Bản đặc tả và Đề thi chuẩn.`);
+      showToast(`🔄 Đã chuyển sang môn ${newHeader.subject} (${newHeader.grade}) & tự động nạp Ma trận, Bản đặc tả và Đề thi chuẩn.`);
     } else {
       setProject(prev => ({
         ...prev,

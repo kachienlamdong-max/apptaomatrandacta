@@ -27,17 +27,19 @@ interface SubjectQuestionBankItem {
 // Helper to normalize subject name
 export function normalizeSubjectKey(subject: string): string {
   const s = (subject || '').toLowerCase().trim();
+  if (s.includes('lịch sử và địa lí') || s.includes('lich su va dia li')) return 'lich-su-dia-li';
+  if (s.includes('khoa học tự nhiên') || s.includes('khtn')) return 'khtn';
   if (s.includes('địa') || s.includes('dia')) return 'dia-li';
   if (s.includes('sử') || s.includes('su') || s.includes('lich su')) return 'lich-su';
-  if (s.includes('toán') || s.includes('toan')) return 'toan';
-  if (s.includes('văn') || s.includes('van') || s.includes('ngữ văn')) return 'ngu-van';
-  if (s.includes('anh') || s.includes('english')) return 'tieng-anh';
-  if (s.includes('lý') || s.includes('ly') || s.includes('vật lí') || s.includes('vat ly')) return 'vat-li';
-  if (s.includes('hóa') || s.includes('hoa')) return 'hoa-hoc';
-  if (s.includes('sinh') || s.includes('biology')) return 'sinh-hoc';
-  if (s.includes('tin') || s.includes('it')) return 'tin-hoc';
+  if (s.includes('anh') || s.includes('english') || s.includes('ngoại ngữ')) return 'tieng-anh';
+  if (s.includes('tin') || s.includes('it') || s.includes('informatics')) return 'tin-hoc';
   if (s.includes('kinh tế') || s.includes('pháp luật') || s.includes('gdcd') || s.includes('gdkt')) return 'gdkt-pl';
   if (s.includes('công nghệ') || s.includes('cong nghe')) return 'cong-nghe';
+  if (s.includes('lý') || s.includes('ly') || s.includes('vật lí') || s.includes('vat ly') || s.includes('vật lý')) return 'vat-li';
+  if (s.includes('hóa') || s.includes('hoa')) return 'hoa-hoc';
+  if (s.includes('sinh') || s.includes('biology')) return 'sinh-hoc';
+  if (s.includes('văn') || s.includes('van') || s.includes('ngữ văn') || s.includes('tiếng việt')) return 'ngu-van';
+  if (s.includes('toán') || s.includes('toan') || s.includes('math')) return 'toan';
   return 'general';
 }
 
@@ -545,32 +547,267 @@ function buildSubjectQuestion(p: BuildQuestionParams): ExamQuestion {
   }
 
   // ==========================================
-  // SUBJECT: TOÁN HỌC (MATHEMATICS) - Default
+  // SUBJECT: TIẾNG ANH (ENGLISH)
+  // ==========================================
+  if (subjectKey === 'tieng-anh') {
+    if (type === 'multiple_choice') {
+      return {
+        id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
+        content: `Choose the letter A, B, C, or D to indicate the correct answer to the following question regarding "${unit || topic}":\nIf she _______ harder, she would have passed the final examination with flying colours.`,
+        options: [
+          { key: 'A', content: 'had studied' },
+          { key: 'B', content: 'studied' },
+          { key: 'C', content: 'studies' },
+          { key: 'D', content: 'would study' }
+        ],
+        correctOption: 'A',
+        explanation: 'Đây là câu điều kiện loại 3 (Third Conditional) diễn tả sự việc trái với thực tế trong quá khứ: If + S + had + V3/ed, S + would/could + have + V3/ed.'
+      };
+    }
+    if (type === 'true_false') {
+      return {
+        id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
+        content: `Read the passage about "${topic}" and decide whether the following statements are True (T) or False (F):\n"Artificial Intelligence (AI) and digital transformation are rapidly revolutionizing education worldwide. By offering personalized learning paths and automated feedback, modern technologies empower students to master complex concepts at their own pace while helping educators optimize instructional time."`,
+        trueFalseItems: [
+          { key: 'a', statement: 'AI and digital transformation are changing global education in significant ways.', isCorrect: true, explanation: 'True (Passage: "...are rapidly revolutionizing education worldwide").' },
+          { key: 'b', statement: 'Personalized learning paths force all students to study at the exact same pace.', isCorrect: false, explanation: 'False (Passage mentions: "...empower students to master complex concepts at their own pace").' },
+          { key: 'c', statement: 'Modern educational technologies can provide automated feedback to learners.', isCorrect: true, explanation: 'True (Passage: "...offering personalized learning paths and automated feedback").' },
+          { key: 'd', statement: 'Educators receive no benefits from applying digital tools in their classrooms.', isCorrect: false, explanation: 'False (Passage states it is "...helping educators optimize instructional time").' }
+        ],
+        explanation: 'Statements a and c are TRUE; b and d are FALSE based on the reading text.'
+      };
+    }
+    if (type === 'short_answer') {
+      return {
+        id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
+        content: `Give the correct form of the word in brackets to complete the sentence: "Renewable energy plays an extremely _______ role in mitigating climate change." (IMPORTANCE)`,
+        shortAnswerKey: 'important',
+        explanation: 'Sau trạng từ "extremely" và trước danh từ "role", ta cần một tính từ: importance (n) -> important (adj).'
+      };
+    }
+    return {
+      id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
+      content: `Write an essay (150 - 180 words) discussing the benefits and challenges of online learning for high school students in Vietnam.`,
+      essayRubric: 'Task Achievement (0.5 pts): Fully addresses all parts of the prompt.\nCoherence & Cohesion (0.5 pts): Clear organization, logical paragraphing and transitions.\nLexical Resource (0.5 pts): Wide range of vocabulary and correct collocations.\nGrammatical Accuracy (0.5 pts): Accurate complex sentence structures and punctuation.',
+      explanation: 'Candidate clearly organizes introduction, body paragraphs (advantages & challenges), and conclusion with supporting examples.'
+    };
+  }
+
+  // ==========================================
+  // SUBJECT: TIN HỌC (INFORMATICS / IT)
+  // ==========================================
+  if (subjectKey === 'tin-hoc') {
+    if (type === 'multiple_choice') {
+      return {
+        id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
+        content: `Trong lập trình và khoa học máy tính (${topic} - ${unit}), cấu trúc dữ liệu hoặc thuật toán nào sau đây hoạt động theo nguyên lí LIFO (Last In First Out)?`,
+        options: [
+          { key: 'A', content: 'Ngăn xếp (Stack)' },
+          { key: 'B', content: 'Hàng đợi (Queue)' },
+          { key: 'C', content: 'Mảng một chiều (Array)' },
+          { key: 'D', content: 'Danh sách liên kết đơn (Singly Linked List)' }
+        ],
+        correctOption: 'A',
+        explanation: 'Ngăn xếp (Stack) lưu trữ và truy xuất phần tử theo nguyên lí vào sau ra trước (LIFO: Last In First Out).'
+      };
+    }
+    if (type === 'true_false') {
+      return {
+        id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
+        content: `Xét các phát biểu về mạng máy tính, an toàn thông tin và cơ sở dữ liệu (${topic}):`,
+        trueFalseItems: [
+          { key: 'a', statement: 'Hệ quản trị cơ sở dữ liệu quan hệ (RDBMS) tổ chức dữ liệu dưới dạng các bảng hai chiều gồm hàng và cột.', isCorrect: true, explanation: 'Đúng theo mô hình dữ liệu quan hệ của Codd.' },
+          { key: 'b', statement: 'Khóa chính (Primary Key) của một bảng có thể chứa các giá trị trùng lặp hoặc giá trị NULL.', isCorrect: false, explanation: 'Sai, khóa chính phải mang tính duy nhất và không được phép NULL.' },
+          { key: 'c', statement: 'Mã hóa dữ liệu và xác thực 2 yếu tố (2FA) giúp tăng cường bảo mật tài khoản người dùng trên không gian mạng.', isCorrect: true, explanation: 'Đúng.' },
+          { key: 'd', statement: 'Giao thức HTTPS truyền dữ liệu dưới dạng văn bản thuần túy không qua bất kì lớp bảo mật nào.', isCorrect: false, explanation: 'Sai, HTTPS sử dụng SSL/TLS để mã hóa đường truyền an toàn.' }
+        ],
+        explanation: 'Mệnh đề a, c ĐÚNG; b, d SAI.'
+      };
+    }
+    if (type === 'short_answer') {
+      return {
+        id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
+        content: `Cho đoạn mã Python: \n\`a = [x**2 for x in range(5) if x % 2 == 1]\`\nGiá trị của \`len(a)\` sau khi thực thi là bao nhiêu?`,
+        shortAnswerKey: '2',
+        explanation: 'Các giá trị thỏa mãn x trong range(5) là số lẻ: x = 1, x = 3 -> a = [1, 9] -> len(a) = 2.'
+      };
+    }
+    return {
+      id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
+      content: `Trình bày các bước xây dựng cơ sở dữ liệu quan hệ cho bài toán Quản lí Thư viện trường học (gồm các thực thể: Sách, Độc giả, Phiếu mượn). Nêu rõ các khóa chính và khóa ngoại để liên kết các bảng.`,
+      essayRubric: 'Ý a (1.0đ): Xác định đúng thuộc tính cho các bảng Sách(MaSach, TenSach, TacGia), DocGia(MaDG, HoTen, Lop), PhieuMuon(MaPM, MaSach, MaDG, NgayMuon, NgayTra).\nÝ b (1.0đ): Chỉ rõ khóa chính và mô tả đúng mối quan hệ 1-N giữa các bảng.',
+      explanation: 'Mô hình hóa dữ liệu chính xác, chuẩn hóa dữ liệu 3NF và thiết lập quan hệ toàn vẹn.'
+    };
+  }
+
+  // ==========================================
+  // SUBJECT: GIÁO DỤC KINH TẾ VÀ PHÁP LUẬT / GDCD
+  // ==========================================
+  if (subjectKey === 'gdkt-pl') {
+    if (type === 'multiple_choice') {
+      return {
+        id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
+        content: `Theo quy định của pháp luật Việt Nam về "${topic} - ${unit}", hình thức thực hiện pháp luật nào mà các cá nhân, tổ chức chủ động thực hiện đầy đủ những nghĩa vụ mà pháp luật quy định phải làm?`,
+        options: [
+          { key: 'A', content: 'Thi hành pháp luật' },
+          { key: 'B', content: 'Sử dụng pháp luật' },
+          { key: 'C', content: 'Tuân thủ pháp luật' },
+          { key: 'D', content: 'Áp dụng pháp luật' }
+        ],
+        correctOption: 'A',
+        explanation: 'Thi hành pháp luật là việc chủ động thực hiện nghĩa vụ mà pháp luật quy định phải làm (ví dụ: đóng thuế, thực hiện nghĩa vụ quân sự).'
+      };
+    }
+    if (type === 'true_false') {
+      return {
+        id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
+        content: `Đọc tình huống kinh tế - pháp luật sau (${topic}):\nDoanh nghiệp X áp dụng mô hình kinh tế tuần hoàn, đầu tư dây chuyền xử lí chất thải thành nguyên liệu tái chế, thực hiện kê khai nộp thuế đúng hạn và kí hợp đồng lao động đầy đủ với người lao động.`,
+        trueFalseItems: [
+          { key: 'a', statement: 'Doanh nghiệp X đã thể hiện trách nhiệm xã hội và bảo vệ môi trường sinh thái.', isCorrect: true, explanation: 'Đúng.' },
+          { key: 'b', statement: 'Việc nộp thuế đúng hạn của doanh nghiệp là hình thức tuân thủ pháp luật bị động.', isCorrect: false, explanation: 'Sai, đây là hành vi thi hành nghĩa vụ pháp lí chủ động.' },
+          { key: 'c', statement: 'Kí hợp đồng lao động giúp bảo đảm quyền và lợi ích hợp pháp của các bên tham gia quan hệ lao động.', isCorrect: true, explanation: 'Đúng theo Bộ luật Lao động.' },
+          { key: 'd', statement: 'Mô hình kinh tế tuần hoàn gây lãng phí tài nguyên và làm giảm năng lực cạnh tranh.', isCorrect: false, explanation: 'Sai, kinh tế tuần hoàn tối ưu hóa sử dụng tài nguyên và phát triển bền vững.' }
+        ],
+        explanation: 'Mệnh đề a, c ĐÚNG; b, d SAI.'
+      };
+    }
+    if (type === 'short_answer') {
+      return {
+        id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
+        content: `Theo Hiến pháp năm 2013 của nước CHXHCN Việt Nam, công dân đủ từ bao nhiêu tuổi trở lên có quyền bầu cử Quốc hội và Hội đồng nhân dân các cấp? (Điền số tuổi)`,
+        shortAnswerKey: '18',
+        explanation: 'Theo Điều 27 Hiến pháp 2013: Công dân đủ mười tám tuổi trở lên có quyền bầu cử và đủ hai mươi mốt tuổi trở lên có quyền ứng cử.'
+      };
+    }
+    return {
+      id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
+      content: `Phân tích vai trò của pháp luật đối với sự phát triển kinh tế thị trường định hướng xã hội chủ nghĩa ở nước ta hiện nay.`,
+      essayRubric: 'Ý a (1.0đ): Tạo khung khổ pháp lí minh bạch, bảo đảm quyền tự do kinh doanh và bình đẳng giữa các thành phần kinh tế.\nÝ b (1.0đ): Ngăn ngừa cạnh tranh không lành mạnh, bảo vệ quyền lợi người tiêu dùng và thúc đẩy hội nhập quốc tế.',
+      explanation: 'Phân tích đầy đủ vai trò định hướng, kiến tạo và bảo vệ của hệ thống pháp luật.'
+    };
+  }
+
+  // ==========================================
+  // SUBJECT: CÔNG NGHỆ (TECHNOLOGY)
+  // ==========================================
+  if (subjectKey === 'cong-nghe') {
+    if (type === 'multiple_choice') {
+      return {
+        id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
+        content: `Trong lĩnh vực công nghệ (${topic} - ${unit}), vật liệu hoặc giải pháp kĩ thuật nào sau đây thân thiện với môi trường và tiết kiệm năng lượng?`,
+        options: [
+          { key: 'A', content: 'Sử dụng hệ thống pin năng lượng mặt trời và đèn LED hiệu suất cao.' },
+          { key: 'B', content: 'Sử dụng nhiên liệu hóa thạch không qua xử lí khí thải.' },
+          { key: 'C', content: 'Xả trực tiếp chất thải công nghiệp chưa qua xử lí ra sông suối.' },
+          { key: 'D', content: 'Lạm dụng hóa chất bảo vệ thực vật có độ độc cao trong canh tác.' }
+        ],
+        correctOption: 'A',
+        explanation: 'Năng lượng tái tạo và thiết bị chiếu sáng LED giúp giảm tiêu thụ điện năng và giảm phát thải khí nhà kính.'
+      };
+    }
+    if (type === 'true_false') {
+      return {
+        id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
+        content: `Xét quy trình thiết kế kĩ thuật và công nghệ sản xuất (${topic}):`,
+        trueFalseItems: [
+          { key: 'a', statement: 'Bản vẽ kĩ thuật là ngôn ngữ chung dùng trong kĩ thuật và sản xuất công nghiệp.', isCorrect: true, explanation: 'Đúng.' },
+          { key: 'b', statement: 'Trong mạch điện xoay chiều, cầu chì được mắc song song với thiết bị điện cần bảo vệ.', isCorrect: false, explanation: 'Sai, cầu chì phải được mắc nối tiếp trên dây pha trước thiết bị điện.' },
+          { key: 'c', statement: 'Nông nghiệp công nghệ cao ứng dụng cảm biến IoT để tự động tưới tiêu và điều hòa vi khí hậu.', isCorrect: true, explanation: 'Đúng.' },
+          { key: 'd', statement: 'Khi sử dụng điện an toàn, có thể sửa chữa thiết bị điện mà không cần ngắt nguồn điện chính.', isCorrect: false, explanation: 'Sai, bắt buộc phải ngắt aptomat/cầu dao và kiểm tra bằng bút thử điện.' }
+        ],
+        explanation: 'Mệnh đề a, c ĐÚNG; b, d SAI.'
+      };
+    }
+    if (type === 'short_answer') {
+      return {
+        id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
+        content: `Một bóng đèn sợi đốt có công suất $P = 60\\text{W}$ thắp sáng $5\\text{ giờ}$ mỗi ngày. Điện năng tiêu thụ của bóng đèn đó trong 30 ngày là bao nhiêu kWh?`,
+        shortAnswerKey: '9',
+        explanation: '$A = P \\times t = 60\\text{W} \\times (5 \\times 30)\\text{h} = 9000\\text{Wh} = 9\\text{kWh}$.'
+      };
+    }
+    return {
+      id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
+      content: `Trình bày các bước trong quy trình thiết kế kĩ thuật một sản phẩm đơn giản phục vụ đời sống.`,
+      essayRubric: 'Ý a (1.0đ): Nêu đúng 5 bước: Xác định vấn đề -> Tìm hiểu tổng quan -> Đề xuất giải pháp -> Chế tạo mẫu thử -> Đánh giá và hoàn thiện.\nÝ b (1.0đ): Minh họa bằng một ví dụ thực tế cụ thể.',
+      explanation: 'Trình bày theo đúng chuẩn quy trình tư duy thiết kế và kĩ thuật GDPT 2018.'
+    };
+  }
+
+  // ==========================================
+  // SUBJECT: TOÁN HỌC (MATHEMATICS)
+  // ==========================================
+  if (subjectKey === 'toan') {
+    if (type === 'multiple_choice') {
+      return {
+        id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
+        content: `Cho hàm số $y = f(x)$ liên quan đến ${unit || topic}. Mệnh đề nào sau đây đúng?`,
+        options: [
+          { key: 'A', content: 'Hàm số đồng biến trên khoảng xác định khi $f\'(x) > 0$.' },
+          { key: 'B', content: 'Hàm số luôn nghịch biến trên $\\mathbb{R}$.' },
+          { key: 'C', content: 'Hàm số không có điểm cực trị nào.' },
+          { key: 'D', content: 'Giá trị lớn nhất của hàm số luôn bằng 0.' }
+        ],
+        correctOption: 'A',
+        explanation: 'Theo định lí về tính đơn điệu của hàm số: Nếu $f\'(x) > 0, \\forall x \\in (a; b)$ thì hàm số đồng biến trên khoảng $(a; b)$.'
+      };
+    }
+    if (type === 'true_false') {
+      return {
+        id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
+        content: `Cho hàm số $y = f(x) = x^3 - 3x^2 + 2$ liên quan đến chủ đề "${topic}":`,
+        trueFalseItems: [
+          { key: 'a', statement: 'Đạo hàm của hàm số là $f\'(x) = 3x^2 - 6x$.', isCorrect: true, explanation: 'Đúng.' },
+          { key: 'b', statement: 'Hàm số đạt cực tiểu tại điểm $x = 0$.', isCorrect: false, explanation: 'Sai, $f\'(x)=0 \\Leftrightarrow x=0$ hoặc $x=2$; $x=0$ là điểm cực đại.' },
+          { key: 'c', statement: 'Hàm số đồng biến trên các khoảng $(-\\infty; 0)$ và $(2; +\\infty)$.', isCorrect: true, explanation: 'Đúng do $f\'(x) > 0$.' },
+          { key: 'd', statement: 'Đồ thị hàm số đi qua gốc tọa độ $O(0; 0)$.', isCorrect: false, explanation: 'Sai, tại $x=0 \\Rightarrow y=2 \\neq 0$.' }
+        ],
+        explanation: 'Mệnh đề a, c ĐÚNG; b, d SAI.'
+      };
+    }
+    if (type === 'short_answer') {
+      return {
+        id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
+        content: `Tìm giá trị cực đại của hàm số $y = -x^2 + 4x + 1$.`,
+        shortAnswerKey: '5',
+        explanation: 'Ta có đỉnh parabol tại $x = -b/(2a) = 2 \\Rightarrow y_{max} = -(2)^2 + 4(2) + 1 = 5$.'
+      };
+    }
+    return {
+      id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
+      content: `Khảo sát sự biến thiên và vẽ đồ thị của hàm số $y = x^3 - 3x + 1$ (${topic}).`,
+      essayRubric: 'Ý a (1.0đ): Tập xác định, tính đạo hàm $y\' = 3x^2 - 3$, giải nghiệm $x = \\pm 1$, lập bảng biến thiên.\nÝ b (1.0đ): Xác định điểm uốn, giao điểm với các trục tọa độ và vẽ đồ thị chính xác.',
+      explanation: 'Thực hiện đầy đủ các bước khảo sát hàm đa thức bậc ba.'
+    };
+  }
+
+  // ==========================================
+  // SUBJECT: GENERIC SUBJECT (CHUNG CHO TẤT CẢ MÔN HỌC KHÁC)
   // ==========================================
   if (type === 'multiple_choice') {
     return {
       id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
-      content: `Cho hàm số $y = f(x)$ liên quan đến ${unit || topic}. Mệnh đề nào sau đây đúng?`,
+      content: `Nội dung cốt lõi của bài học "${unit || topic}" (Môn ${p.subjectName}) hướng tới phát triển năng lực nhận thức nào sau đây?`,
       options: [
-        { key: 'A', content: 'Hàm số đồng biến trên khoảng xác định khi $f\'(x) > 0$.' },
-        { key: 'B', content: 'Hàm số luôn nghịch biến trên $\\mathbb{R}$.' },
-        { key: 'C', content: 'Hàm số không có điểm cực trị nào.' },
-        { key: 'D', content: 'Giá trị lớn nhất của hàm số luôn bằng 0.' }
+        { key: 'A', content: 'Hiểu rõ khái niệm bản chất, vận dụng linh hoạt kiến thức vào giải quyết vấn đề thực tiễn.' },
+        { key: 'B', content: 'Chỉ học thuộc lòng máy móc định nghĩa mà không cần liên hệ thực tế.' },
+        { key: 'C', content: 'Bỏ qua việc phân tích và đánh giá các dữ liệu thực nghiệm.' },
+        { key: 'D', content: 'Không chú trọng tư duy phản biện và kĩ năng làm việc sáng tạo.' }
       ],
       correctOption: 'A',
-      explanation: 'Theo định lí về tính đơn điệu của hàm số: Nếu $f\'(x) > 0, \\forall x \\in (a; b)$ thì hàm số đồng biến trên khoảng $(a; b)$.'
+      explanation: `Chương trình giáo dục môn ${p.subjectName} chú trọng phát triển phẩm chất và năng lực giải quyết vấn đề gắn với thực tiễn đời sống.`
     };
   }
 
   if (type === 'true_false') {
     return {
       id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
-      content: `Cho hàm số $y = f(x) = x^3 - 3x^2 + 2$ liên quan đến chủ đề "${topic}":`,
+      content: `Xét các nhận định khoa học liên quan đến nội dung "${topic} - ${unit}" trong môn ${p.subjectName}:`,
       trueFalseItems: [
-        { key: 'a', statement: 'Đạo hàm của hàm số là $f\'(x) = 3x^2 - 6x$.', isCorrect: true, explanation: 'Đúng.' },
-        { key: 'b', statement: 'Hàm số đạt cực tiểu tại điểm $x = 0$.', isCorrect: false, explanation: 'Sai, $f\'(x)=0 \\Leftrightarrow x=0$ hoặc $x=2$; $x=0$ là điểm cực đại.' },
-        { key: 'c', statement: 'Hàm số đồng biến trên các khoảng $(-\\infty; 0)$ và $(2; +\\infty)$.', isCorrect: true, explanation: 'Đúng do $f\'(x) > 0$.' },
-        { key: 'd', statement: 'Đồ thị hàm số đi qua gốc tọa độ $O(0; 0)$.', isCorrect: false, explanation: 'Sai, tại $x=0 \\Rightarrow y=2 \\neq 0$.' }
+        { key: 'a', statement: `Kiến thức của "${unit || topic}" có tính hệ thống và gắn liền với các hiện tượng thực tế.`, isCorrect: true, explanation: 'Đúng, môn học mang tính thực tiễn cao.' },
+        { key: 'b', statement: 'Mọi quy luật khoa học đều mang tính cảm tính và không cần được kiểm chứng bằng thực nghiệm.', isCorrect: false, explanation: 'Sai, tri thức khoa học dựa trên phương pháp nghiên cứu và luận cứ xác thực.' },
+        { key: 'c', statement: 'Việc vận dụng tri thức vào đời sống giúp nâng cao năng lực tư duy sáng tạo của người học.', isCorrect: true, explanation: 'Đúng.' },
+        { key: 'd', statement: 'Nội dung bài học hoàn toàn tách rời với xu thế chuyển đổi số và phát triển bền vững.', isCorrect: false, explanation: 'Sai, môn học luôn định hướng gắn với xã hội hiện đại.' }
       ],
       explanation: 'Mệnh đề a, c ĐÚNG; b, d SAI.'
     };
@@ -579,17 +816,17 @@ function buildSubjectQuestion(p: BuildQuestionParams): ExamQuestion {
   if (type === 'short_answer') {
     return {
       id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
-      content: `Tìm giá trị cực đại của hàm số $y = -x^2 + 4x + 1$.`,
-      shortAnswerKey: '5',
-      explanation: 'Ta có đỉnh parabol tại $x = -b/(2a) = 2 \\Rightarrow y_{max} = -(2)^2 + 4(2) + 1 = 5$.'
+      content: `Hãy nêu từ khóa (keyword) quan trọng nhất thể hiện mục tiêu phát triển của "${topic} - ${unit}" (viết ngắn gọn trong 1-4 từ)?`,
+      shortAnswerKey: 'Vận dụng thực tiễn',
+      explanation: `Mục tiêu cốt lõi là phát triển năng lực tư duy và vận dụng kiến thức môn ${p.subjectName} vào thực tiễn.`
     };
   }
 
   return {
     id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
-    content: `Khảo sát sự biến thiên và vẽ đồ thị của hàm số $y = x^3 - 3x + 1$ (${topic}).`,
-    essayRubric: 'Ý a (1.0đ): Tập xác định, tính đạo hàm $y\' = 3x^2 - 3$, giải nghiệm $x = \\pm 1$, lập bảng biến thiên.\nÝ b (1.0đ): Xác định điểm uốn, giao điểm với các trục tọa độ và vẽ đồ thị chính xác.',
-    explanation: 'Thực hiện đầy đủ các bước khảo sát hàm đa thức bậc ba.'
+    content: `Dựa vào kiến thức về "${topic} - ${unit}" trong môn ${p.subjectName}, hãy trình bày ý nghĩa thực tiễn của bài học và đề xuất 02 giải pháp nâng cao hiệu quả học tập môn học này.`,
+    essayRubric: 'Ý a (1.0đ): Nêu rõ ý nghĩa thực tiễn đối với đời sống và nhận thức bản thân.\nÝ b (1.0đ): Đề xuất 02 giải pháp học tập chủ động, sáng tạo và có tính khả thi cao.',
+    explanation: 'Trình bày mạch lạc, logic và bám sát yêu cầu cần đạt của chương trình.'
   };
 }
 
