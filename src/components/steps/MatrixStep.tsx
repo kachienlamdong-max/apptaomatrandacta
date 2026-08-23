@@ -9,6 +9,8 @@ import {
   CheckCircle2, 
   AlertCircle, 
   ArrowRight, 
+  ArrowDown,
+  ArrowUp,
   Edit3,
   BookOpen,
   PieChart,
@@ -54,7 +56,7 @@ export const MatrixStep: React.FC<MatrixStepProps> = ({
   isAiGeneratingSpec,
   isAiGeneratingExam
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'matrix' | 'spec'>('matrix');
+  const [activeSubTab, setActiveSubTab] = useState<'both' | 'matrix' | 'spec'>('both');
   const [specViewMode, setSpecViewMode] = useState<'table' | 'cards'>('table');
   const [specSyncNotification, setSpecSyncNotification] = useState<string | null>(null);
   const [isConfigPanelOpen, setIsConfigPanelOpen] = useState(false);
@@ -278,24 +280,68 @@ export const MatrixStep: React.FC<MatrixStepProps> = ({
     });
 
     onChangeSpecification(newSpecs);
-    setActiveSubTab('spec');
-    setSpecSyncNotification('✨ Đã tạo bảng đặc tả tự động bám sát 100% theo các ô của Ma trận!');
+    setSpecSyncNotification('✨ Đã tạo & đồng bộ Bảng đặc tả khớp 100% từng ô Ma trận!');
+    if (activeSubTab === 'matrix') {
+      setActiveSubTab('both');
+    }
+    setTimeout(() => {
+      document.getElementById('section-spec')?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
     setTimeout(() => setSpecSyncNotification(null), 4000);
   };
 
   // Update a single learning objective in the specification
   const handleUpdateSpecObjective = (index: number, level: 'nb' | 'th' | 'vd' | 'vdc', text: string) => {
-    const updated = [...specification];
-    if (updated[index]) {
-      updated[index] = {
-        ...updated[index],
-        learningObjectives: {
-          ...updated[index].learningObjectives,
-          [level]: text
+    const row = matrix[index];
+    if (!row) return;
+
+    let updated = [...specification];
+    // If specification length does not match matrix, populate missing items
+    while (updated.length < matrix.length) {
+      const mRow = matrix[updated.length];
+      updated.push({
+        id: `spec-${mRow.id || updated.length}`,
+        topic: mRow.topic,
+        unit: mRow.unit,
+        learningObjectives: { nb: '', th: '', vd: '', vdc: '' },
+        questionCount: {
+          part1: { nb: mRow.part1_nb, th: mRow.part1_th, vd: mRow.part1_vd, vdc: mRow.part1_vdc },
+          part2: { nb: mRow.part2_nb, th: mRow.part2_th, vd: mRow.part2_vd, vdc: mRow.part2_vdc },
+          part3: { nb: mRow.part3_nb, th: mRow.part3_th, vd: mRow.part3_vd, vdc: mRow.part3_vdc },
+          part4: { nb: mRow.part4_nb, th: mRow.part4_th, vd: mRow.part4_vd, vdc: mRow.part4_vdc },
         }
-      };
-      onChangeSpecification(updated);
+      });
     }
+
+    const cur = updated[index] || {
+      id: `spec-${row.id || index}`,
+      topic: row.topic,
+      unit: row.unit,
+      learningObjectives: { nb: '', th: '', vd: '', vdc: '' },
+      questionCount: {
+        part1: { nb: row.part1_nb, th: row.part1_th, vd: row.part1_vd, vdc: row.part1_vdc },
+        part2: { nb: row.part2_nb, th: row.part2_th, vd: row.part2_vd, vdc: row.part2_vdc },
+        part3: { nb: row.part3_nb, th: row.part3_th, vd: row.part3_vd, vdc: row.part3_vdc },
+        part4: { nb: row.part4_nb, th: row.part4_th, vd: row.part4_vd, vdc: row.part4_vdc },
+      }
+    };
+
+    updated[index] = {
+      ...cur,
+      topic: row.topic,
+      unit: row.unit,
+      learningObjectives: {
+        ...cur.learningObjectives,
+        [level]: text
+      },
+      questionCount: {
+        part1: { nb: row.part1_nb, th: row.part1_th, vd: row.part1_vd, vdc: row.part1_vdc },
+        part2: { nb: row.part2_nb, th: row.part2_th, vd: row.part2_vd, vdc: row.part2_vdc },
+        part3: { nb: row.part3_nb, th: row.part3_th, vd: row.part3_vd, vdc: row.part3_vdc },
+        part4: { nb: row.part4_nb, th: row.part4_th, vd: row.part4_vd, vdc: row.part4_vdc },
+      }
+    };
+    onChangeSpecification(updated);
   };
 
   // Import default syllabus topics for current subject & grade
@@ -433,29 +479,40 @@ export const MatrixStep: React.FC<MatrixStepProps> = ({
       {/* Sub-navigation & Quick Actions Header */}
       <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-4">
         
-        {/* Toggle between Matrix & Spec */}
+        {/* Toggle between Both, Matrix & Spec */}
         <div className="flex items-center p-1 bg-slate-100 rounded-xl border border-slate-200">
+          <button
+            id="tab-btn-both"
+            onClick={() => setActiveSubTab('both')}
+            className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all ${
+              activeSubTab === 'both'
+                ? 'bg-white text-indigo-700 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            📋 Xem Cả Hai (Ma Trận & Đặc Tả)
+          </button>
           <button
             id="tab-btn-matrix"
             onClick={() => setActiveSubTab('matrix')}
-            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+            className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all ${
               activeSubTab === 'matrix'
                 ? 'bg-white text-indigo-700 shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            📊 Khung Ma Trận Đề Thi
+            📊 Chỉ xem Ma Trận
           </button>
           <button
             id="tab-btn-spec"
             onClick={() => setActiveSubTab('spec')}
-            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+            className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all ${
               activeSubTab === 'spec'
                 ? 'bg-white text-indigo-700 shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            📝 Bản Đặc Tả Chuẩn Bộ
+            📝 Chỉ xem Bản Đặc Tả
           </button>
         </div>
 
@@ -1057,19 +1114,31 @@ export const MatrixStep: React.FC<MatrixStepProps> = ({
       </div>
 
       {/* SUB TAB 1: MATRIX TABLE */}
-      {activeSubTab === 'matrix' && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+      {(activeSubTab === 'both' || activeSubTab === 'matrix') && (
+        <div id="section-matrix" className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
           
-          <div className="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+          <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
+              <span className="px-2 py-0.5 bg-indigo-100 text-indigo-800 rounded font-black text-xs">BẢNG 1</span>
               <span className="font-bold text-xs text-slate-800 uppercase tracking-wider">
                 Bảng Ma Trận Phân Bổ Câu Hỏi Theo Chuẩn Bộ GD&ĐT
               </span>
-              <span className="text-[11px] text-slate-500">
+              <span className="text-[11px] text-slate-500 hidden sm:inline">
                 ({header.subject} - {header.grade} - {header.examTitle})
               </span>
             </div>
             <div className="flex items-center gap-2">
+              {activeSubTab === 'both' && (
+                <button
+                  type="button"
+                  onClick={() => document.getElementById('section-spec')?.scrollIntoView({ behavior: 'smooth' })}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg shadow-2xs transition-colors"
+                  title="Cuộn nhanh xuống xem Bảng Đặc Tả"
+                >
+                  <ArrowDown className="w-3.5 h-3.5" />
+                  <span>Xem Bảng Đặc Tả</span>
+                </button>
+              )}
               <button
                 id="btn-add-matrix-row"
                 onClick={handleAddRow}
@@ -1715,13 +1784,14 @@ export const MatrixStep: React.FC<MatrixStepProps> = ({
       )}
 
       {/* SUB TAB 2: SPECIFICATION TABLE & STRICT MATRIX CELL LOCKING */}
-      {activeSubTab === 'spec' && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden space-y-4 p-4 sm:p-6">
+      {(activeSubTab === 'both' || activeSubTab === 'spec') && (
+        <div id="section-spec" className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden space-y-4 p-4 sm:p-6">
           
           {/* Header Controls */}
           <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-slate-200">
             <div>
               <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded font-black text-xs">BẢNG 2</span>
                 <h4 className="text-sm sm:text-base font-bold text-slate-900">
                   Bản Đặc Tả Ma Trận Đề Kiểm Tra Chuẩn Bộ GD&ĐT
                 </h4>
@@ -1730,11 +1800,22 @@ export const MatrixStep: React.FC<MatrixStepProps> = ({
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-1">
-                🔒 <strong>Quy tắc bảo vệ:</strong> Chỉ cho phép nhập Yêu cầu cần đạt vào các ô có phân bổ câu hỏi ở Ma trận. Các ô có 0 câu hỏi sẽ tự động khóa.
+                🔒 <strong>Quy tắc bảo vệ:</strong> Chỉ cho phép nhập Yêu cầu cần đạt vào các ô có phân bổ câu hỏi ở Ma trận. Các ô có 0 câu hỏi sẽ tự động khóa để bảo đảm tính thống nhất.
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              {activeSubTab === 'both' && (
+                <button
+                  type="button"
+                  onClick={() => document.getElementById('section-matrix')?.scrollIntoView({ behavior: 'smooth' })}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                  title="Cuộn nhanh lên xem Bảng Ma Trận"
+                >
+                  <ArrowUp className="w-3.5 h-3.5" />
+                  <span>Lên Bảng Ma Trận</span>
+                </button>
+              )}
               
               {/* View Switcher */}
               <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs">
@@ -1760,18 +1841,20 @@ export const MatrixStep: React.FC<MatrixStepProps> = ({
 
               {/* Sync Button */}
               <button
+                id="btn-sync-spec-from-matrix-inner"
                 onClick={handleGenerateSpecFromMatrix}
-                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-xl transition-colors"
-                title="Đồng bộ lại toàn bộ đặc tả theo ma trận hiện tại"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-xl transition-colors shadow-2xs"
+                title="Tự động đồng bộ các ô và câu hỏi khớp theo Ma trận"
               >
                 <RefreshCw className="w-3.5 h-3.5 text-emerald-600" />
                 <span>Đồng bộ từ Ma trận</span>
               </button>
 
               <button
+                id="btn-ai-rewrite-spec"
                 onClick={onGenerateAiSpec}
                 disabled={isAiGeneratingSpec}
-                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-xl transition-colors"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-xl transition-colors"
               >
                 <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
                 <span>AI Viết lại chi tiết</span>
