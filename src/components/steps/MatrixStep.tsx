@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { 
   Plus, 
+  Minus,
   Trash2, 
   Sparkles, 
   FileText, 
@@ -73,9 +74,15 @@ export const MatrixStep: React.FC<MatrixStepProps> = ({
 
   // Handler to update part configs (points per question, target questions, name, enable)
   const handleUpdatePartConfig = (partKey: keyof ExamPartConfigs, field: keyof PartConfig, value: any) => {
-    const parsedValue = (field === 'pointsPerQuestion' || field === 'targetQuestions')
-      ? Math.max(0, Number(value) || 0)
-      : value;
+    let parsedValue = value;
+    if (field === 'pointsPerQuestion' || field === 'targetQuestions') {
+      if (typeof value === 'string') {
+        const normalized = value.replace(',', '.').trim();
+        parsedValue = normalized === '' ? 0 : Math.max(0, parseFloat(normalized) || 0);
+      } else {
+        parsedValue = Math.max(0, Number(value) || 0);
+      }
+    }
 
     const newConfigs: ExamPartConfigs = {
       ...partConfigs,
@@ -111,6 +118,20 @@ export const MatrixStep: React.FC<MatrixStepProps> = ({
       });
       onChangeMatrix(updated);
     }
+  };
+
+  // Quick adjust point per question with +/- step
+  const handleAdjustPoints = (partKey: keyof ExamPartConfigs, delta: number) => {
+    const current = partConfigs[partKey]?.pointsPerQuestion ?? (partKey === 'part1' ? 0.25 : partKey === 'part2' ? 1.0 : partKey === 'part3' ? 0.5 : 1.0);
+    const newVal = Math.max(0, Number((current + delta).toFixed(2)));
+    handleUpdatePartConfig(partKey, 'pointsPerQuestion', newVal);
+  };
+
+  // Quick adjust target question count with +/- step
+  const handleAdjustQuestions = (partKey: keyof ExamPartConfigs, delta: number) => {
+    const current = partConfigs[partKey]?.targetQuestions ?? (partKey === 'part1' ? 12 : partKey === 'part2' ? 4 : partKey === 'part3' ? 6 : 2);
+    const newVal = Math.max(0, current + delta);
+    handleUpdatePartConfig(partKey, 'targetQuestions', newVal);
   };
 
   // Preset structure loader
@@ -582,14 +603,31 @@ export const MatrixStep: React.FC<MatrixStepProps> = ({
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-slate-600 font-medium">Điểm mỗi câu:</span>
                   <div className="flex items-center gap-1">
-                    <input
-                      type="number"
-                      step="0.05"
-                      min="0"
-                      value={p1_pts}
-                      onChange={(e) => handleUpdatePartConfig('part1', 'pointsPerQuestion', parseFloat(e.target.value) || 0)}
-                      className="w-16 px-2 py-1 bg-white border border-indigo-200 rounded text-right font-extrabold text-indigo-700 focus:outline-hidden focus:border-indigo-500"
-                    />
+                    <div className="flex items-center border border-indigo-200 rounded bg-white overflow-hidden shadow-2xs">
+                      <button
+                        type="button"
+                        onClick={() => handleAdjustPoints('part1', -0.05)}
+                        className="px-1.5 py-1 bg-slate-50 hover:bg-indigo-100 text-slate-600 hover:text-indigo-700 transition-colors"
+                        title="Giảm 0.05 điểm"
+                      >
+                        <Minus className="w-3 h-3" />
+                      </button>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={p1_pts}
+                        onChange={(e) => handleUpdatePartConfig('part1', 'pointsPerQuestion', e.target.value)}
+                        className="w-12 py-1 text-center font-extrabold text-indigo-700 focus:outline-hidden text-xs bg-transparent"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleAdjustPoints('part1', 0.05)}
+                        className="px-1.5 py-1 bg-slate-50 hover:bg-indigo-100 text-slate-600 hover:text-indigo-700 transition-colors"
+                        title="Tăng 0.05 điểm"
+                      >
+                        <Plus className="w-3 h-3" />
+                      </button>
+                    </div>
                     <span className="text-slate-500 font-bold">đ</span>
                   </div>
                 </div>
@@ -597,13 +635,31 @@ export const MatrixStep: React.FC<MatrixStepProps> = ({
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-slate-600 font-medium">Số câu mục tiêu:</span>
                   <div className="flex items-center gap-1">
-                    <input
-                      type="number"
-                      min="0"
-                      value={p1_target}
-                      onChange={(e) => handleUpdatePartConfig('part1', 'targetQuestions', parseInt(e.target.value) || 0)}
-                      className="w-16 px-2 py-1 bg-white border border-indigo-200 rounded text-right font-extrabold text-slate-800 focus:outline-hidden focus:border-indigo-500"
-                    />
+                    <div className="flex items-center border border-indigo-200 rounded bg-white overflow-hidden shadow-2xs">
+                      <button
+                        type="button"
+                        onClick={() => handleAdjustQuestions('part1', -1)}
+                        className="px-1.5 py-1 bg-slate-50 hover:bg-indigo-100 text-slate-600 hover:text-indigo-700 transition-colors"
+                        title="Giảm 1 câu"
+                      >
+                        <Minus className="w-3 h-3" />
+                      </button>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={p1_target}
+                        onChange={(e) => handleUpdatePartConfig('part1', 'targetQuestions', e.target.value)}
+                        className="w-10 py-1 text-center font-extrabold text-slate-800 focus:outline-hidden text-xs bg-transparent"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleAdjustQuestions('part1', 1)}
+                        className="px-1.5 py-1 bg-slate-50 hover:bg-indigo-100 text-slate-600 hover:text-indigo-700 transition-colors"
+                        title="Tăng 1 câu"
+                      >
+                        <Plus className="w-3 h-3" />
+                      </button>
+                    </div>
                     <span className="text-slate-500">câu</span>
                   </div>
                 </div>
@@ -649,14 +705,31 @@ export const MatrixStep: React.FC<MatrixStepProps> = ({
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-slate-600 font-medium">Điểm mỗi câu:</span>
                   <div className="flex items-center gap-1">
-                    <input
-                      type="number"
-                      step="0.1"
-                      min="0"
-                      value={p2_pts}
-                      onChange={(e) => handleUpdatePartConfig('part2', 'pointsPerQuestion', parseFloat(e.target.value) || 0)}
-                      className="w-16 px-2 py-1 bg-white border border-blue-200 rounded text-right font-extrabold text-blue-700 focus:outline-hidden focus:border-blue-500"
-                    />
+                    <div className="flex items-center border border-blue-200 rounded bg-white overflow-hidden shadow-2xs">
+                      <button
+                        type="button"
+                        onClick={() => handleAdjustPoints('part2', -0.25)}
+                        className="px-1.5 py-1 bg-slate-50 hover:bg-blue-100 text-slate-600 hover:text-blue-700 transition-colors"
+                        title="Giảm 0.25 điểm"
+                      >
+                        <Minus className="w-3 h-3" />
+                      </button>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={p2_pts}
+                        onChange={(e) => handleUpdatePartConfig('part2', 'pointsPerQuestion', e.target.value)}
+                        className="w-12 py-1 text-center font-extrabold text-blue-700 focus:outline-hidden text-xs bg-transparent"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleAdjustPoints('part2', 0.25)}
+                        className="px-1.5 py-1 bg-slate-50 hover:bg-blue-100 text-slate-600 hover:text-blue-700 transition-colors"
+                        title="Tăng 0.25 điểm"
+                      >
+                        <Plus className="w-3 h-3" />
+                      </button>
+                    </div>
                     <span className="text-slate-500 font-bold">đ</span>
                   </div>
                 </div>
@@ -664,13 +737,31 @@ export const MatrixStep: React.FC<MatrixStepProps> = ({
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-slate-600 font-medium">Số câu mục tiêu:</span>
                   <div className="flex items-center gap-1">
-                    <input
-                      type="number"
-                      min="0"
-                      value={p2_target}
-                      onChange={(e) => handleUpdatePartConfig('part2', 'targetQuestions', parseInt(e.target.value) || 0)}
-                      className="w-16 px-2 py-1 bg-white border border-blue-200 rounded text-right font-extrabold text-slate-800 focus:outline-hidden focus:border-blue-500"
-                    />
+                    <div className="flex items-center border border-blue-200 rounded bg-white overflow-hidden shadow-2xs">
+                      <button
+                        type="button"
+                        onClick={() => handleAdjustQuestions('part2', -1)}
+                        className="px-1.5 py-1 bg-slate-50 hover:bg-blue-100 text-slate-600 hover:text-blue-700 transition-colors"
+                        title="Giảm 1 câu"
+                      >
+                        <Minus className="w-3 h-3" />
+                      </button>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={p2_target}
+                        onChange={(e) => handleUpdatePartConfig('part2', 'targetQuestions', e.target.value)}
+                        className="w-10 py-1 text-center font-extrabold text-slate-800 focus:outline-hidden text-xs bg-transparent"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleAdjustQuestions('part2', 1)}
+                        className="px-1.5 py-1 bg-slate-50 hover:bg-blue-100 text-slate-600 hover:text-blue-700 transition-colors"
+                        title="Tăng 1 câu"
+                      >
+                        <Plus className="w-3 h-3" />
+                      </button>
+                    </div>
                     <span className="text-slate-500">câu</span>
                   </div>
                 </div>
@@ -716,14 +807,31 @@ export const MatrixStep: React.FC<MatrixStepProps> = ({
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-slate-600 font-medium">Điểm mỗi câu:</span>
                   <div className="flex items-center gap-1">
-                    <input
-                      type="number"
-                      step="0.05"
-                      min="0"
-                      value={p3_pts}
-                      onChange={(e) => handleUpdatePartConfig('part3', 'pointsPerQuestion', parseFloat(e.target.value) || 0)}
-                      className="w-16 px-2 py-1 bg-white border border-emerald-200 rounded text-right font-extrabold text-emerald-700 focus:outline-hidden focus:border-emerald-500"
-                    />
+                    <div className="flex items-center border border-emerald-200 rounded bg-white overflow-hidden shadow-2xs">
+                      <button
+                        type="button"
+                        onClick={() => handleAdjustPoints('part3', -0.1)}
+                        className="px-1.5 py-1 bg-slate-50 hover:bg-emerald-100 text-slate-600 hover:text-emerald-700 transition-colors"
+                        title="Giảm 0.1 điểm"
+                      >
+                        <Minus className="w-3 h-3" />
+                      </button>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={p3_pts}
+                        onChange={(e) => handleUpdatePartConfig('part3', 'pointsPerQuestion', e.target.value)}
+                        className="w-12 py-1 text-center font-extrabold text-emerald-700 focus:outline-hidden text-xs bg-transparent"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleAdjustPoints('part3', 0.1)}
+                        className="px-1.5 py-1 bg-slate-50 hover:bg-emerald-100 text-slate-600 hover:text-emerald-700 transition-colors"
+                        title="Tăng 0.1 điểm"
+                      >
+                        <Plus className="w-3 h-3" />
+                      </button>
+                    </div>
                     <span className="text-slate-500 font-bold">đ</span>
                   </div>
                 </div>
@@ -731,13 +839,31 @@ export const MatrixStep: React.FC<MatrixStepProps> = ({
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-slate-600 font-medium">Số câu mục tiêu:</span>
                   <div className="flex items-center gap-1">
-                    <input
-                      type="number"
-                      min="0"
-                      value={p3_target}
-                      onChange={(e) => handleUpdatePartConfig('part3', 'targetQuestions', parseInt(e.target.value) || 0)}
-                      className="w-16 px-2 py-1 bg-white border border-emerald-200 rounded text-right font-extrabold text-slate-800 focus:outline-hidden focus:border-emerald-500"
-                    />
+                    <div className="flex items-center border border-emerald-200 rounded bg-white overflow-hidden shadow-2xs">
+                      <button
+                        type="button"
+                        onClick={() => handleAdjustQuestions('part3', -1)}
+                        className="px-1.5 py-1 bg-slate-50 hover:bg-emerald-100 text-slate-600 hover:text-emerald-700 transition-colors"
+                        title="Giảm 1 câu"
+                      >
+                        <Minus className="w-3 h-3" />
+                      </button>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={p3_target}
+                        onChange={(e) => handleUpdatePartConfig('part3', 'targetQuestions', e.target.value)}
+                        className="w-10 py-1 text-center font-extrabold text-slate-800 focus:outline-hidden text-xs bg-transparent"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleAdjustQuestions('part3', 1)}
+                        className="px-1.5 py-1 bg-slate-50 hover:bg-emerald-100 text-slate-600 hover:text-emerald-700 transition-colors"
+                        title="Tăng 1 câu"
+                      >
+                        <Plus className="w-3 h-3" />
+                      </button>
+                    </div>
                     <span className="text-slate-500">câu</span>
                   </div>
                 </div>
@@ -783,14 +909,31 @@ export const MatrixStep: React.FC<MatrixStepProps> = ({
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-slate-600 font-medium">Điểm mỗi câu:</span>
                   <div className="flex items-center gap-1">
-                    <input
-                      type="number"
-                      step="0.25"
-                      min="0"
-                      value={p4_pts}
-                      onChange={(e) => handleUpdatePartConfig('part4', 'pointsPerQuestion', parseFloat(e.target.value) || 0)}
-                      className="w-16 px-2 py-1 bg-white border border-amber-200 rounded text-right font-extrabold text-amber-700 focus:outline-hidden focus:border-amber-500"
-                    />
+                    <div className="flex items-center border border-amber-200 rounded bg-white overflow-hidden shadow-2xs">
+                      <button
+                        type="button"
+                        onClick={() => handleAdjustPoints('part4', -0.25)}
+                        className="px-1.5 py-1 bg-slate-50 hover:bg-amber-100 text-slate-600 hover:text-amber-700 transition-colors"
+                        title="Giảm 0.25 điểm"
+                      >
+                        <Minus className="w-3 h-3" />
+                      </button>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={p4_pts}
+                        onChange={(e) => handleUpdatePartConfig('part4', 'pointsPerQuestion', e.target.value)}
+                        className="w-12 py-1 text-center font-extrabold text-amber-700 focus:outline-hidden text-xs bg-transparent"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleAdjustPoints('part4', 0.25)}
+                        className="px-1.5 py-1 bg-slate-50 hover:bg-amber-100 text-slate-600 hover:text-amber-700 transition-colors"
+                        title="Tăng 0.25 điểm"
+                      >
+                        <Plus className="w-3 h-3" />
+                      </button>
+                    </div>
                     <span className="text-slate-500 font-bold">đ</span>
                   </div>
                 </div>
@@ -798,13 +941,31 @@ export const MatrixStep: React.FC<MatrixStepProps> = ({
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-slate-600 font-medium">Số câu mục tiêu:</span>
                   <div className="flex items-center gap-1">
-                    <input
-                      type="number"
-                      min="0"
-                      value={p4_target}
-                      onChange={(e) => handleUpdatePartConfig('part4', 'targetQuestions', parseInt(e.target.value) || 0)}
-                      className="w-16 px-2 py-1 bg-white border border-amber-200 rounded text-right font-extrabold text-slate-800 focus:outline-hidden focus:border-amber-500"
-                    />
+                    <div className="flex items-center border border-amber-200 rounded bg-white overflow-hidden shadow-2xs">
+                      <button
+                        type="button"
+                        onClick={() => handleAdjustQuestions('part4', -1)}
+                        className="px-1.5 py-1 bg-slate-50 hover:bg-amber-100 text-slate-600 hover:text-amber-700 transition-colors"
+                        title="Giảm 1 câu"
+                      >
+                        <Minus className="w-3 h-3" />
+                      </button>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={p4_target}
+                        onChange={(e) => handleUpdatePartConfig('part4', 'targetQuestions', e.target.value)}
+                        className="w-10 py-1 text-center font-extrabold text-slate-800 focus:outline-hidden text-xs bg-transparent"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleAdjustQuestions('part4', 1)}
+                        className="px-1.5 py-1 bg-slate-50 hover:bg-amber-100 text-slate-600 hover:text-amber-700 transition-colors"
+                        title="Tăng 1 câu"
+                      >
+                        <Plus className="w-3 h-3" />
+                      </button>
+                    </div>
                     <span className="text-slate-500">câu</span>
                   </div>
                 </div>
@@ -946,31 +1107,68 @@ export const MatrixStep: React.FC<MatrixStepProps> = ({
                         </span>
                       </div>
                       
-                      <div className="flex items-center justify-between gap-1.5 text-[11px] bg-white/90 p-1.5 rounded-lg border border-indigo-100 shadow-2xs">
+                      <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] bg-white/95 p-1 rounded-lg border border-indigo-100 shadow-2xs">
+                        {/* Điểm/câu */}
                         <div className="flex items-center gap-1">
-                          <span className="text-slate-500 font-medium">Điểm/câu:</span>
-                          <input
-                            type="number"
-                            step="0.05"
-                            min="0"
-                            value={p1_pts}
-                            onChange={(e) => handleUpdatePartConfig('part1', 'pointsPerQuestion', parseFloat(e.target.value) || 0)}
-                            className="w-12 px-1 py-0.5 text-center font-bold text-indigo-700 bg-white border border-indigo-200 rounded focus:ring-1 focus:ring-indigo-500 focus:outline-hidden text-xs"
-                            title="Số điểm mỗi câu Phần I"
-                          />
-                          <span className="text-indigo-900 font-bold">đ</span>
+                          <span className="text-slate-500 font-medium text-[10px]">Điểm:</span>
+                          <div className="flex items-center border border-indigo-200 rounded bg-white overflow-hidden shadow-2xs">
+                            <button
+                              type="button"
+                              onClick={() => handleAdjustPoints('part1', -0.05)}
+                              className="w-4 h-5 flex items-center justify-center bg-slate-50 hover:bg-indigo-100 text-slate-600 hover:text-indigo-700 transition-colors"
+                              title="Giảm 0.05 điểm"
+                            >
+                              <Minus className="w-2.5 h-2.5" />
+                            </button>
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              value={p1_pts}
+                              onChange={(e) => handleUpdatePartConfig('part1', 'pointsPerQuestion', e.target.value)}
+                              className="w-8 text-center font-extrabold text-indigo-700 bg-transparent focus:outline-hidden text-[11px]"
+                              title="Số điểm mỗi câu Phần I"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleAdjustPoints('part1', 0.05)}
+                              className="w-4 h-5 flex items-center justify-center bg-slate-50 hover:bg-indigo-100 text-slate-600 hover:text-indigo-700 transition-colors"
+                              title="Tăng 0.05 điểm"
+                            >
+                              <Plus className="w-2.5 h-2.5" />
+                            </button>
+                          </div>
+                          <span className="text-indigo-900 font-bold text-[10px]">đ</span>
                         </div>
 
+                        {/* Số câu */}
                         <div className="flex items-center gap-1">
-                          <span className="text-slate-500 font-medium">Số câu:</span>
-                          <input
-                            type="number"
-                            min="0"
-                            value={p1_target}
-                            onChange={(e) => handleUpdatePartConfig('part1', 'targetQuestions', parseInt(e.target.value) || 0)}
-                            className="w-10 px-1 py-0.5 text-center font-bold text-slate-800 bg-white border border-indigo-200 rounded focus:ring-1 focus:ring-indigo-500 focus:outline-hidden text-xs"
-                            title="Số câu mục tiêu Phần I"
-                          />
+                          <span className="text-slate-500 font-medium text-[10px]">Số câu:</span>
+                          <div className="flex items-center border border-indigo-200 rounded bg-white overflow-hidden shadow-2xs">
+                            <button
+                              type="button"
+                              onClick={() => handleAdjustQuestions('part1', -1)}
+                              className="w-4 h-5 flex items-center justify-center bg-slate-50 hover:bg-indigo-100 text-slate-600 hover:text-indigo-700 transition-colors"
+                              title="Giảm 1 câu"
+                            >
+                              <Minus className="w-2.5 h-2.5" />
+                            </button>
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              value={p1_target}
+                              onChange={(e) => handleUpdatePartConfig('part1', 'targetQuestions', e.target.value)}
+                              className="w-7 text-center font-bold text-slate-800 bg-transparent focus:outline-hidden text-[11px]"
+                              title="Số câu mục tiêu Phần I"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleAdjustQuestions('part1', 1)}
+                              className="w-4 h-5 flex items-center justify-center bg-slate-50 hover:bg-indigo-100 text-slate-600 hover:text-indigo-700 transition-colors"
+                              title="Tăng 1 câu"
+                            >
+                              <Plus className="w-2.5 h-2.5" />
+                            </button>
+                          </div>
                         </div>
                       </div>
 
@@ -999,31 +1197,68 @@ export const MatrixStep: React.FC<MatrixStepProps> = ({
                         </span>
                       </div>
                       
-                      <div className="flex items-center justify-between gap-1.5 text-[11px] bg-white/90 p-1.5 rounded-lg border border-blue-100 shadow-2xs">
+                      <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] bg-white/95 p-1 rounded-lg border border-blue-100 shadow-2xs">
+                        {/* Điểm/câu */}
                         <div className="flex items-center gap-1">
-                          <span className="text-slate-500 font-medium">Điểm/câu:</span>
-                          <input
-                            type="number"
-                            step="0.1"
-                            min="0"
-                            value={p2_pts}
-                            onChange={(e) => handleUpdatePartConfig('part2', 'pointsPerQuestion', parseFloat(e.target.value) || 0)}
-                            className="w-12 px-1 py-0.5 text-center font-bold text-blue-700 bg-white border border-blue-200 rounded focus:ring-1 focus:ring-blue-500 focus:outline-hidden text-xs"
-                            title="Số điểm mỗi câu Phần II"
-                          />
-                          <span className="text-blue-900 font-bold">đ</span>
+                          <span className="text-slate-500 font-medium text-[10px]">Điểm:</span>
+                          <div className="flex items-center border border-blue-200 rounded bg-white overflow-hidden shadow-2xs">
+                            <button
+                              type="button"
+                              onClick={() => handleAdjustPoints('part2', -0.25)}
+                              className="w-4 h-5 flex items-center justify-center bg-slate-50 hover:bg-blue-100 text-slate-600 hover:text-blue-700 transition-colors"
+                              title="Giảm 0.25 điểm"
+                            >
+                              <Minus className="w-2.5 h-2.5" />
+                            </button>
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              value={p2_pts}
+                              onChange={(e) => handleUpdatePartConfig('part2', 'pointsPerQuestion', e.target.value)}
+                              className="w-8 text-center font-extrabold text-blue-700 bg-transparent focus:outline-hidden text-[11px]"
+                              title="Số điểm mỗi câu Phần II"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleAdjustPoints('part2', 0.25)}
+                              className="w-4 h-5 flex items-center justify-center bg-slate-50 hover:bg-blue-100 text-slate-600 hover:text-blue-700 transition-colors"
+                              title="Tăng 0.25 điểm"
+                            >
+                              <Plus className="w-2.5 h-2.5" />
+                            </button>
+                          </div>
+                          <span className="text-blue-900 font-bold text-[10px]">đ</span>
                         </div>
 
+                        {/* Số câu */}
                         <div className="flex items-center gap-1">
-                          <span className="text-slate-500 font-medium">Số câu:</span>
-                          <input
-                            type="number"
-                            min="0"
-                            value={p2_target}
-                            onChange={(e) => handleUpdatePartConfig('part2', 'targetQuestions', parseInt(e.target.value) || 0)}
-                            className="w-10 px-1 py-0.5 text-center font-bold text-slate-800 bg-white border border-blue-200 rounded focus:ring-1 focus:ring-blue-500 focus:outline-hidden text-xs"
-                            title="Số câu mục tiêu Phần II"
-                          />
+                          <span className="text-slate-500 font-medium text-[10px]">Số câu:</span>
+                          <div className="flex items-center border border-blue-200 rounded bg-white overflow-hidden shadow-2xs">
+                            <button
+                              type="button"
+                              onClick={() => handleAdjustQuestions('part2', -1)}
+                              className="w-4 h-5 flex items-center justify-center bg-slate-50 hover:bg-blue-100 text-slate-600 hover:text-blue-700 transition-colors"
+                              title="Giảm 1 câu"
+                            >
+                              <Minus className="w-2.5 h-2.5" />
+                            </button>
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              value={p2_target}
+                              onChange={(e) => handleUpdatePartConfig('part2', 'targetQuestions', e.target.value)}
+                              className="w-7 text-center font-bold text-slate-800 bg-transparent focus:outline-hidden text-[11px]"
+                              title="Số câu mục tiêu Phần II"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleAdjustQuestions('part2', 1)}
+                              className="w-4 h-5 flex items-center justify-center bg-slate-50 hover:bg-blue-100 text-slate-600 hover:text-blue-700 transition-colors"
+                              title="Tăng 1 câu"
+                            >
+                              <Plus className="w-2.5 h-2.5" />
+                            </button>
+                          </div>
                         </div>
                       </div>
 
@@ -1052,31 +1287,68 @@ export const MatrixStep: React.FC<MatrixStepProps> = ({
                         </span>
                       </div>
                       
-                      <div className="flex items-center justify-between gap-1.5 text-[11px] bg-white/90 p-1.5 rounded-lg border border-emerald-100 shadow-2xs">
+                      <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] bg-white/95 p-1 rounded-lg border border-emerald-100 shadow-2xs">
+                        {/* Điểm/câu */}
                         <div className="flex items-center gap-1">
-                          <span className="text-slate-500 font-medium">Điểm/câu:</span>
-                          <input
-                            type="number"
-                            step="0.05"
-                            min="0"
-                            value={p3_pts}
-                            onChange={(e) => handleUpdatePartConfig('part3', 'pointsPerQuestion', parseFloat(e.target.value) || 0)}
-                            className="w-12 px-1 py-0.5 text-center font-bold text-emerald-700 bg-white border border-emerald-200 rounded focus:ring-1 focus:ring-emerald-500 focus:outline-hidden text-xs"
-                            title="Số điểm mỗi câu Phần III"
-                          />
-                          <span className="text-emerald-900 font-bold">đ</span>
+                          <span className="text-slate-500 font-medium text-[10px]">Điểm:</span>
+                          <div className="flex items-center border border-emerald-200 rounded bg-white overflow-hidden shadow-2xs">
+                            <button
+                              type="button"
+                              onClick={() => handleAdjustPoints('part3', -0.1)}
+                              className="w-4 h-5 flex items-center justify-center bg-slate-50 hover:bg-emerald-100 text-slate-600 hover:text-emerald-700 transition-colors"
+                              title="Giảm 0.1 điểm"
+                            >
+                              <Minus className="w-2.5 h-2.5" />
+                            </button>
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              value={p3_pts}
+                              onChange={(e) => handleUpdatePartConfig('part3', 'pointsPerQuestion', e.target.value)}
+                              className="w-8 text-center font-extrabold text-emerald-700 bg-transparent focus:outline-hidden text-[11px]"
+                              title="Số điểm mỗi câu Phần III"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleAdjustPoints('part3', 0.1)}
+                              className="w-4 h-5 flex items-center justify-center bg-slate-50 hover:bg-emerald-100 text-slate-600 hover:text-emerald-700 transition-colors"
+                              title="Tăng 0.1 điểm"
+                            >
+                              <Plus className="w-2.5 h-2.5" />
+                            </button>
+                          </div>
+                          <span className="text-emerald-900 font-bold text-[10px]">đ</span>
                         </div>
 
+                        {/* Số câu */}
                         <div className="flex items-center gap-1">
-                          <span className="text-slate-500 font-medium">Số câu:</span>
-                          <input
-                            type="number"
-                            min="0"
-                            value={p3_target}
-                            onChange={(e) => handleUpdatePartConfig('part3', 'targetQuestions', parseInt(e.target.value) || 0)}
-                            className="w-10 px-1 py-0.5 text-center font-bold text-slate-800 bg-white border border-emerald-200 rounded focus:ring-1 focus:ring-emerald-500 focus:outline-hidden text-xs"
-                            title="Số câu mục tiêu Phần III"
-                          />
+                          <span className="text-slate-500 font-medium text-[10px]">Số câu:</span>
+                          <div className="flex items-center border border-emerald-200 rounded bg-white overflow-hidden shadow-2xs">
+                            <button
+                              type="button"
+                              onClick={() => handleAdjustQuestions('part3', -1)}
+                              className="w-4 h-5 flex items-center justify-center bg-slate-50 hover:bg-emerald-100 text-slate-600 hover:text-emerald-700 transition-colors"
+                              title="Giảm 1 câu"
+                            >
+                              <Minus className="w-2.5 h-2.5" />
+                            </button>
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              value={p3_target}
+                              onChange={(e) => handleUpdatePartConfig('part3', 'targetQuestions', e.target.value)}
+                              className="w-7 text-center font-bold text-slate-800 bg-transparent focus:outline-hidden text-[11px]"
+                              title="Số câu mục tiêu Phần III"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleAdjustQuestions('part3', 1)}
+                              className="w-4 h-5 flex items-center justify-center bg-slate-50 hover:bg-emerald-100 text-slate-600 hover:text-emerald-700 transition-colors"
+                              title="Tăng 1 câu"
+                            >
+                              <Plus className="w-2.5 h-2.5" />
+                            </button>
+                          </div>
                         </div>
                       </div>
 
@@ -1105,31 +1377,68 @@ export const MatrixStep: React.FC<MatrixStepProps> = ({
                         </span>
                       </div>
                       
-                      <div className="flex items-center justify-between gap-1.5 text-[11px] bg-white/90 p-1.5 rounded-lg border border-amber-100 shadow-2xs">
+                      <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] bg-white/95 p-1 rounded-lg border border-amber-100 shadow-2xs">
+                        {/* Điểm/câu */}
                         <div className="flex items-center gap-1">
-                          <span className="text-slate-500 font-medium">Điểm/câu:</span>
-                          <input
-                            type="number"
-                            step="0.25"
-                            min="0"
-                            value={p4_pts}
-                            onChange={(e) => handleUpdatePartConfig('part4', 'pointsPerQuestion', parseFloat(e.target.value) || 0)}
-                            className="w-12 px-1 py-0.5 text-center font-bold text-amber-700 bg-white border border-amber-200 rounded focus:ring-1 focus:ring-amber-500 focus:outline-hidden text-xs"
-                            title="Số điểm mỗi câu Phần IV"
-                          />
-                          <span className="text-amber-900 font-bold">đ</span>
+                          <span className="text-slate-500 font-medium text-[10px]">Điểm:</span>
+                          <div className="flex items-center border border-amber-200 rounded bg-white overflow-hidden shadow-2xs">
+                            <button
+                              type="button"
+                              onClick={() => handleAdjustPoints('part4', -0.25)}
+                              className="w-4 h-5 flex items-center justify-center bg-slate-50 hover:bg-amber-100 text-slate-600 hover:text-amber-700 transition-colors"
+                              title="Giảm 0.25 điểm"
+                            >
+                              <Minus className="w-2.5 h-2.5" />
+                            </button>
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              value={p4_pts}
+                              onChange={(e) => handleUpdatePartConfig('part4', 'pointsPerQuestion', e.target.value)}
+                              className="w-8 text-center font-extrabold text-amber-700 bg-transparent focus:outline-hidden text-[11px]"
+                              title="Số điểm mỗi câu Phần IV"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleAdjustPoints('part4', 0.25)}
+                              className="w-4 h-5 flex items-center justify-center bg-slate-50 hover:bg-amber-100 text-slate-600 hover:text-amber-700 transition-colors"
+                              title="Tăng 0.25 điểm"
+                            >
+                              <Plus className="w-2.5 h-2.5" />
+                            </button>
+                          </div>
+                          <span className="text-amber-900 font-bold text-[10px]">đ</span>
                         </div>
 
+                        {/* Số câu */}
                         <div className="flex items-center gap-1">
-                          <span className="text-slate-500 font-medium">Số câu:</span>
-                          <input
-                            type="number"
-                            min="0"
-                            value={p4_target}
-                            onChange={(e) => handleUpdatePartConfig('part4', 'targetQuestions', parseInt(e.target.value) || 0)}
-                            className="w-10 px-1 py-0.5 text-center font-bold text-slate-800 bg-white border border-amber-200 rounded focus:ring-1 focus:ring-amber-500 focus:outline-hidden text-xs"
-                            title="Số câu mục tiêu Phần IV"
-                          />
+                          <span className="text-slate-500 font-medium text-[10px]">Số câu:</span>
+                          <div className="flex items-center border border-amber-200 rounded bg-white overflow-hidden shadow-2xs">
+                            <button
+                              type="button"
+                              onClick={() => handleAdjustQuestions('part4', -1)}
+                              className="w-4 h-5 flex items-center justify-center bg-slate-50 hover:bg-amber-100 text-slate-600 hover:text-amber-700 transition-colors"
+                              title="Giảm 1 câu"
+                            >
+                              <Minus className="w-2.5 h-2.5" />
+                            </button>
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              value={p4_target}
+                              onChange={(e) => handleUpdatePartConfig('part4', 'targetQuestions', e.target.value)}
+                              className="w-7 text-center font-bold text-slate-800 bg-transparent focus:outline-hidden text-[11px]"
+                              title="Số câu mục tiêu Phần IV"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleAdjustQuestions('part4', 1)}
+                              className="w-4 h-5 flex items-center justify-center bg-slate-50 hover:bg-amber-100 text-slate-600 hover:text-amber-700 transition-colors"
+                              title="Tăng 1 câu"
+                            >
+                              <Plus className="w-2.5 h-2.5" />
+                            </button>
+                          </div>
                         </div>
                       </div>
 

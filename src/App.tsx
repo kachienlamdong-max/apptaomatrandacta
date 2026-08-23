@@ -263,7 +263,7 @@ export default function App() {
         {currentTab === 'config' && (
           <HeaderConfigStep
             header={project.header}
-            onChangeHeader={(newHeader) => setProject({ ...project, header: newHeader })}
+            onChangeHeader={(newHeader) => setProject(prev => ({ ...prev, header: newHeader }))}
             onGenerateAiMatrix={handleGenerateAiMatrix}
             onNextStep={() => setCurrentTab('matrix')}
             isAiGenerating={isAiGeneratingMatrix}
@@ -274,11 +274,11 @@ export default function App() {
         {currentTab === 'matrix' && (
           <MatrixStep
             header={project.header}
-            onChangeHeader={(newHeader) => setProject({ ...project, header: newHeader })}
+            onChangeHeader={(newHeader) => setProject(prev => ({ ...prev, header: newHeader }))}
             matrix={project.matrix}
-            onChangeMatrix={(newMatrix) => setProject({ ...project, matrix: newMatrix })}
+            onChangeMatrix={(newMatrix) => setProject(prev => ({ ...prev, matrix: newMatrix }))}
             specification={project.specification}
-            onChangeSpecification={(newSpec) => setProject({ ...project, specification: newSpec })}
+            onChangeSpecification={(newSpec) => setProject(prev => ({ ...prev, specification: newSpec }))}
             onGenerateAiSpec={handleGenerateAiSpec}
             onGenerateAiExam={handleGenerateAiExam}
             onNextStep={() => setCurrentTab('exam')}
@@ -294,10 +294,10 @@ export default function App() {
             questions={project.sampleExamQuestions}
             onChangeQuestions={(newQ) => {
               const updatedVariants = generateShuffledExamVariants(newQ);
-              setProject({ ...project, sampleExamQuestions: newQ, shuffledVariants: updatedVariants });
+              setProject(prev => ({ ...prev, sampleExamQuestions: newQ, shuffledVariants: updatedVariants }));
             }}
             variants={project.shuffledVariants}
-            onChangeVariants={(newV) => setProject({ ...project, shuffledVariants: newV })}
+            onChangeVariants={(newV) => setProject(prev => ({ ...prev, shuffledVariants: newV }))}
             onAssistQuestion={handleAssistQuestion}
             onNextStep={() => setCurrentTab('export')}
             isAiGeneratingExam={isAiGeneratingExam}
