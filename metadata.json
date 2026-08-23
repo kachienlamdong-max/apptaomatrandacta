@@ -1,0 +1,6 @@
+{
+  "name": "Hệ Thống Tạo Ma Trận, Đặc Tả & Đề Kiểm Tra Chuẩn Bộ GD&ĐT",
+  "description": "Nền tảng EdTech hỗ trợ giáo viên toàn quốc tự động tạo ma trận, bản đặc tả và đề thi định kỳ chuẩn cấu trúc Bộ GD&ĐT, hỗ trợ công thức Toán/KHTN LaTeX, trộn 4 mã đề và xuất Word .docx",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
