@@ -15,13 +15,12 @@ import { ExamProject, ExamQuestion } from '../types';
 
 export async function exportExamToDocx(project: ExamProject, targetVariantCode: string = '101'): Promise<Blob> {
   const { header, matrix, specification, shuffledVariants, sampleExamQuestions } = project;
-  const currentVariant = shuffledVariants.find(v => v.examCode === targetVariantCode) || {
-    examCode: targetVariantCode,
-    questions: sampleExamQuestions,
-    answerKeySummary: []
-  };
-
-  const questions = currentVariant.questions;
+  
+  const targetVariant = (shuffledVariants || []).find(v => v.examCode === targetVariantCode) || shuffledVariants?.[0];
+  const currentCode = targetVariant?.examCode || targetVariantCode;
+  const questions: ExamQuestion[] = (targetVariant?.questions && targetVariant.questions.length > 0) 
+    ? targetVariant.questions 
+    : sampleExamQuestions;
 
   // Clean LaTeX notation for Word (e.g. $\frac{a}{b}$ to readable text or stripped LaTeX)
   const cleanLatex = (str: string) => {
@@ -73,13 +72,13 @@ export async function exportExamToDocx(project: ExamProject, targetVariantCode: 
               new Paragraph({
                 alignment: AlignmentType.CENTER,
                 children: [
-                  new TextRun({ text: header.provinceOrDept.toUpperCase() || 'SỞ GIÁO DỤC VÀ ĐÀO TẠO', font: 'Times New Roman', size: 22 }),
+                  new TextRun({ text: header.provinceOrDept ? header.provinceOrDept.toUpperCase() : 'SỞ GIÁO DỤC VÀ ĐÀO TẠO', font: 'Times New Roman', size: 22 }),
                 ],
               }),
               new Paragraph({
                 alignment: AlignmentType.CENTER,
                 children: [
-                  new TextRun({ text: header.schoolName.toUpperCase() || 'TRƯỜNG THPT CHUẨN QUỐC GIA', bold: true, font: 'Times New Roman', size: 22 }),
+                  new TextRun({ text: header.schoolName ? header.schoolName.toUpperCase() : 'TRƯỜNG THPT CHU VĂN AN', bold: true, font: 'Times New Roman', size: 22 }),
                 ],
               }),
               new Paragraph({
@@ -106,13 +105,13 @@ export async function exportExamToDocx(project: ExamProject, targetVariantCode: 
               new Paragraph({
                 alignment: AlignmentType.CENTER,
                 children: [
-                  new TextRun({ text: header.examTitle.toUpperCase() || 'ĐỀ KIỂM TRA ĐỊNH KỲ', bold: true, font: 'Times New Roman', size: 24 }),
+                  new TextRun({ text: header.examTitle ? header.examTitle.toUpperCase() : 'ĐỀ KIỂM TRA ĐỊNH KỲ', bold: true, font: 'Times New Roman', size: 24 }),
                 ],
               }),
               new Paragraph({
                 alignment: AlignmentType.CENTER,
                 children: [
-                  new TextRun({ text: `MÔN: ${header.subject.toUpperCase()} - ${header.grade.toUpperCase()}`, bold: true, font: 'Times New Roman', size: 24 }),
+                  new TextRun({ text: `MÔN: ${header.subject.toUpperCase()} - KHỐI ${header.grade.toUpperCase()}`, bold: true, font: 'Times New Roman', size: 24 }),
                 ],
               }),
               new Paragraph({
@@ -130,7 +129,7 @@ export async function exportExamToDocx(project: ExamProject, targetVariantCode: 
               new Paragraph({
                 alignment: AlignmentType.RIGHT,
                 children: [
-                  new TextRun({ text: `MÃ ĐỀ THI: ${currentVariant.examCode}`, bold: true, font: 'Times New Roman', size: 24 }),
+                  new TextRun({ text: `MÃ ĐỀ THI: ${currentCode}`, bold: true, font: 'Times New Roman', size: 24 }),
                 ],
               }),
             ],
@@ -424,12 +423,12 @@ export async function exportExamToDocx(project: ExamProject, targetVariantCode: 
     }
   });
 
-  // SECTION 3: BẢNG MA TRẬN VÀ BẢN ĐẶC TẢ
+  // SECTION 3: BẢNG MA TRẬN
   docParagraphs.push(
     new Paragraph({
       alignment: AlignmentType.CENTER,
       children: [
-        new TextRun({ text: 'KHUNG MA TRẬN VÀ BẢN ĐẶC TẢ ĐỀ KIỂM TRA ĐỊNH KỲ', bold: true, font: 'Times New Roman', size: 26 }),
+        new TextRun({ text: 'KHUNG MA TRẬN ĐỀ KIỂM TRA ĐỊNH KỲ', bold: true, font: 'Times New Roman', size: 26 }),
       ],
       spacing: { before: 500, after: 200 },
     })
@@ -480,6 +479,62 @@ export async function exportExamToDocx(project: ExamProject, targetVariantCode: 
 
   docParagraphs.push(matrixDocxTable);
 
+  // SECTION 4: BẢNG ĐẶC TẢ CHI TIẾT
+  if (specification && specification.length > 0) {
+    docParagraphs.push(
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        children: [
+          new TextRun({ text: 'BẢN ĐẶC TẢ MA TRẬN ĐỀ KIỂM TRA ĐỊNH KỲ', bold: true, font: 'Times New Roman', size: 26 }),
+        ],
+        spacing: { before: 500, after: 200 },
+      })
+    );
+
+    const specTableRows: TableRow[] = [
+      new TableRow({
+        children: [
+          new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'TT', bold: true, font: 'Times New Roman' })] })] }),
+          new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'Chủ đề / Đơn vị kiến thức', bold: true, font: 'Times New Roman' })] })] }),
+          new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'Mức độ đánh giá (Yêu cầu cần đạt)', bold: true, font: 'Times New Roman' })] })] }),
+        ],
+      }),
+    ];
+
+    specification.forEach((spec, idx) => {
+      const objParagraphs: Paragraph[] = [];
+      if (spec.learningObjectives.nb) {
+        objParagraphs.push(new Paragraph({ children: [new TextRun({ text: '- Nhận biết: ', bold: true, font: 'Times New Roman' }), new TextRun({ text: spec.learningObjectives.nb, font: 'Times New Roman' })] }));
+      }
+      if (spec.learningObjectives.th) {
+        objParagraphs.push(new Paragraph({ children: [new TextRun({ text: '- Thông hiểu: ', bold: true, font: 'Times New Roman' }), new TextRun({ text: spec.learningObjectives.th, font: 'Times New Roman' })] }));
+      }
+      if (spec.learningObjectives.vd) {
+        objParagraphs.push(new Paragraph({ children: [new TextRun({ text: '- Vận dụng: ', bold: true, font: 'Times New Roman' }), new TextRun({ text: spec.learningObjectives.vd, font: 'Times New Roman' })] }));
+      }
+      if (spec.learningObjectives.vdc) {
+        objParagraphs.push(new Paragraph({ children: [new TextRun({ text: '- Vận dụng cao: ', bold: true, font: 'Times New Roman' }), new TextRun({ text: spec.learningObjectives.vdc, font: 'Times New Roman' })] }));
+      }
+
+      specTableRows.push(
+        new TableRow({
+          children: [
+            new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(idx + 1), font: 'Times New Roman' })] })] }),
+            new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: `${spec.topic}\n- ${spec.unit}`, font: 'Times New Roman', bold: true })] })] }),
+            new TableCell({ children: objParagraphs }),
+          ],
+        })
+      );
+    });
+
+    const specDocxTable = new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      rows: specTableRows,
+    });
+
+    docParagraphs.push(specDocxTable);
+  }
+
   const doc = new Document({
     sections: [
       {
@@ -513,4 +568,3 @@ export async function exportFullExamToDocx(project: ExamProject, targetVariantCo
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
-

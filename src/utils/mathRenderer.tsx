@@ -2,17 +2,19 @@ import React from 'react';
 import katex from 'katex';
 
 interface MathRendererProps {
-  text: string;
+  text?: string;
+  content?: string;
   className?: string;
 }
 
-export const MathRenderer: React.FC<MathRendererProps> = ({ text, className = '' }) => {
-  if (!text) return null;
+export const MathRenderer: React.FC<MathRendererProps> = ({ text, content, className = '' }) => {
+  const rawText = (content !== undefined ? content : text) || '';
+  if (!rawText) return null;
 
   // Split text by block math $$...$$ and inline math $...$
   // Example: "Cho hàm số $f(x) = x^3 - 3x^2 + 2$. Giá trị cực đại là:"
   const parts: React.ReactNode[] = [];
-  let remaining = text;
+  let remaining = rawText;
   let keyIndex = 0;
 
   // Regex to match $$block$$ or $inline$

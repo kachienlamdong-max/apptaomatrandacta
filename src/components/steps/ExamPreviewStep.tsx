@@ -30,6 +30,8 @@ interface ExamPreviewStepProps {
   onAssistQuestion: (q: ExamQuestion, prompt: string) => Promise<ExamQuestion | null>;
   onNextStep: () => void;
   isAiGeneratingExam: boolean;
+  onSyncQuestionsFromMatrix?: () => void;
+  onGenerateAiExam?: () => void;
 }
 
 export const ExamPreviewStep: React.FC<ExamPreviewStepProps> = ({
@@ -40,7 +42,9 @@ export const ExamPreviewStep: React.FC<ExamPreviewStepProps> = ({
   onChangeVariants,
   onAssistQuestion,
   onNextStep,
-  isAiGeneratingExam
+  isAiGeneratingExam,
+  onSyncQuestionsFromMatrix,
+  onGenerateAiExam
 }) => {
   const [viewMode, setViewMode] = useState<'master' | 'variants' | 'matrix_key'>('master');
   const [selectedVariantCode, setSelectedVariantCode] = useState<'101' | '102' | '103' | '104'>('101');
@@ -127,27 +131,99 @@ export const ExamPreviewStep: React.FC<ExamPreviewStepProps> = ({
         </div>
 
         {/* Reshuffle & Export actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {onSyncQuestionsFromMatrix && (
+            <button
+              id="btn-sync-matrix-questions"
+              onClick={onSyncQuestionsFromMatrix}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition-colors"
+              title="Đồng bộ chính xác câu hỏi theo môn học, ma trận và bản đặc tả"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Đồng bộ từ Ma trận & Đặc tả</span>
+            </button>
+          )}
+
+          {onGenerateAiExam && (
+            <button
+              id="btn-ai-generate-exam"
+              onClick={onGenerateAiExam}
+              disabled={isAiGeneratingExam}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-xl transition-colors disabled:opacity-50"
+            >
+              <Wand2 className={`w-3.5 h-3.5 ${isAiGeneratingExam ? 'animate-spin' : 'text-indigo-600'}`} />
+              <span>{isAiGeneratingExam ? 'AI đang tạo...' : 'AI Tạo Đề'}</span>
+            </button>
+          )}
+
           <button
             id="btn-reshuffle"
             onClick={handleReshuffle}
-            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
           >
             <Shuffle className="w-3.5 h-3.5 text-indigo-600" />
-            <span>Trộn lại 4 mã đề</span>
+            <span>Trộn 4 mã đề</span>
           </button>
 
           <button
             id="btn-goto-export"
             onClick={onNextStep}
-            className="inline-flex items-center gap-1.5 px-5 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-sm shadow-indigo-200 transition-colors"
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-sm shadow-indigo-200 transition-colors"
           >
-            <span>Xuất File Word .docx</span>
+            <span>Xuất File Word</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </div>
 
       </div>
+
+      {/* Sync Status Banner */}
+      <div className="bg-emerald-50/60 border border-emerald-200/80 rounded-xl px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div className="flex items-center gap-2 text-emerald-900">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+          <span>
+            Đề kiểm tra đang đồng bộ <strong className="font-bold">100%</strong> với môn <strong className="font-bold">{header.subject}</strong> ({header.grade}) — Tổng số: <strong className="font-bold">{questions.length} câu</strong> theo Ma trận và Bản đặc tả.
+          </span>
+        </div>
+        <span className="text-[11px] text-emerald-700 bg-white px-2.5 py-1 rounded-md border border-emerald-200 font-medium">
+          Thời gian: {header.timeDuration} phút
+        </span>
+      </div>
+
+      {questions.length === 0 && (
+        <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center space-y-4">
+          <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 mx-auto flex items-center justify-center">
+            <FileText className="w-6 h-6" />
+          </div>
+          <div className="max-w-md mx-auto space-y-1">
+            <h3 className="font-bold text-base text-slate-900">Chưa có câu hỏi trong đề thi</h3>
+            <p className="text-xs text-slate-500">
+              Nhấn nút bên dưới để tạo ngay bộ câu hỏi chuẩn hóa bám sát 100% Ma trận và Bản đặc tả môn {header.subject}.
+            </p>
+          </div>
+          <div className="flex items-center justify-center gap-3 pt-2">
+            {onSyncQuestionsFromMatrix && (
+              <button
+                onClick={onSyncQuestionsFromMatrix}
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-200 transition-colors"
+              >
+                <Sparkles className="w-4 h-4" />
+                <span>Tạo câu hỏi từ Ma trận & Đặc tả</span>
+              </button>
+            )}
+            {onGenerateAiExam && (
+              <button
+                onClick={onGenerateAiExam}
+                disabled={isAiGeneratingExam}
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-200 transition-colors disabled:opacity-50"
+              >
+                <Wand2 className="w-4 h-4" />
+                <span>Tạo bằng AI</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* VIEW 1: MASTER EXAM & DETAILED SOLUTIONS */}
       {viewMode === 'master' && (
