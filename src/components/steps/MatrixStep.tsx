@@ -465,6 +465,7 @@ export const MatrixStep: React.FC<MatrixStepProps> = ({
   const ratioTh = grandTotalPoints > 0 ? Math.round((ptsTotalTh / grandTotalPoints) * 100) : 30;
   const ratioVd = grandTotalPoints > 0 ? Math.round((ptsTotalVd / grandTotalPoints) * 100) : 20;
   const ratioVdc = grandTotalPoints > 0 ? (100 - ratioNb - ratioTh - ratioVd) : 10;
+  const totalNumPeriods = matrix.reduce((acc, row) => acc + (row.numPeriods || 0), 0);
 
   // Helper to format percentage per column cell
   const formatCellPercentage = (pts: number) => {
@@ -1519,6 +1520,7 @@ export const MatrixStep: React.FC<MatrixStepProps> = ({
                   </th>
 
                   <th rowSpan={2} className="p-2.5 text-center border-r border-slate-200 w-20">Điểm</th>
+                  <th rowSpan={2} className="p-2.5 text-center border-r border-slate-200 w-16" title="Số tiết theo phân phối chương trình">Số tiết</th>
                   <th rowSpan={2} className="p-2.5 text-center w-12">Xóa</th>
                 </tr>
                 <tr className="bg-slate-50 text-[11px] text-slate-600 font-semibold border-b border-slate-200">
@@ -1627,6 +1629,17 @@ export const MatrixStep: React.FC<MatrixStepProps> = ({
                       {row.totalPoints || 0} đ
                     </td>
 
+                    <td className="p-1 border-r border-slate-200 text-center">
+                      <input 
+                        type="number" 
+                        min={0} 
+                        value={row.numPeriods || ''} 
+                        onChange={(e) => handleUpdateRow(row.id, 'numPeriods', Number(e.target.value) || 0)} 
+                        className="w-12 text-center py-1 bg-transparent hover:bg-white focus:bg-white border-0 rounded font-semibold text-slate-700 text-xs" 
+                        placeholder="0" 
+                      />
+                    </td>
+
                     <td className="p-2 text-center">
                       <button
                         onClick={() => handleDeleteRow(row.id)}
@@ -1674,6 +1687,9 @@ export const MatrixStep: React.FC<MatrixStepProps> = ({
                     </span>
                     <span className="text-[10px] text-slate-400 block font-normal">/ {grandTargetQuestions} MT</span>
                   </td>
+                  <td className="p-2 text-center text-xs font-bold text-slate-700 border-r border-slate-200">
+                    {totalNumPeriods > 0 ? `${totalNumPeriods}t` : '—'}
+                  </td>
                   <td></td>
                 </tr>
 
@@ -1710,6 +1726,7 @@ export const MatrixStep: React.FC<MatrixStepProps> = ({
                       {grandTotalPoints.toFixed(2)} đ
                     </span>
                   </td>
+                  <td className="border-r border-slate-200"></td>
                   <td></td>
                 </tr>
 
@@ -1738,7 +1755,7 @@ export const MatrixStep: React.FC<MatrixStepProps> = ({
                   <td className="p-1.5 text-center border-r border-slate-300 text-[11px] text-amber-800 font-bold">{formatCellPercentage(ptsP4_th)}</td>
                   <td className="p-1.5 text-center border-r border-slate-300 text-[11px] text-amber-800 font-bold">{formatCellPercentage(ptsP4_vd)}</td>
                   <td className="p-1.5 text-center border-r border-slate-300 text-[11px] text-amber-800 font-bold">{formatCellPercentage(ptsP4_vdc)}</td>
-                  <td className="p-2.5 text-center text-xs font-black text-indigo-700 bg-indigo-200/70 border-r border-slate-300">
+                  <td colSpan={2} className="p-2.5 text-center text-xs font-black text-indigo-700 bg-indigo-200/70 border-r border-slate-300">
                     100%
                   </td>
                   <td></td>

@@ -50,6 +50,7 @@ export interface MatrixRow {
   part4_vdc: number;
   // Tổng điểm dòng
   totalPoints?: number;
+  numPeriods?: number; // Số tiết
 }
 
 export interface SpecificationItem {
@@ -128,6 +129,7 @@ export interface ExamPartConfigs {
 export interface ExamHeaderConfig {
   provinceOrDept: string; // SỞ GD&ĐT TỈNH/TP...
   schoolName: string; // TRƯỜNG THPT/THCS/TIỂU HỌC...
+  dept?: string; // TỔ CHUYÊN MÔN (e.g. TỔ TOÁN - TIN, TỔ KHXH, TỔ KHTN)
   examTitle: string; // ĐỀ KIỂM TRA ĐỊNH KỲ HỌC KỲ I / KHẢO SÁT CHẤT LƯỢNG
   subject: string;
   grade: GradeLevel;

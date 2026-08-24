@@ -147,17 +147,17 @@ export const HeaderConfigStep: React.FC<HeaderConfigStepProps> = ({
             </h3>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
                 Sở / Phòng GD&ĐT
               </label>
               <input
-                id="input-header-dept"
+                id="input-header-dept-gov"
                 type="text"
                 value={header.provinceOrDept}
                 onChange={(e) => onChangeHeader({ ...header, provinceOrDept: e.target.value })}
-                placeholder="Ví dụ: SỞ GIÁO DỤC VÀ ĐÀO TẠO HÀ NỘI"
+                placeholder="Ví dụ: SỞ GD&ĐT HÀ NỘI"
                 className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 font-medium"
               />
             </div>
@@ -171,7 +171,21 @@ export const HeaderConfigStep: React.FC<HeaderConfigStepProps> = ({
                 type="text"
                 value={header.schoolName}
                 onChange={(e) => onChangeHeader({ ...header, schoolName: e.target.value })}
-                placeholder="Ví dụ: TRƯỜNG THPT CHUYÊN CHU VĂN AN"
+                placeholder="Ví dụ: TRƯỜNG THPT CHU VĂN AN"
+                className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 font-medium"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Tổ bộ môn / Chuyên môn
+              </label>
+              <input
+                id="input-header-dept"
+                type="text"
+                value={header.dept || ''}
+                onChange={(e) => onChangeHeader({ ...header, dept: e.target.value })}
+                placeholder="Ví dụ: TỔ SỬ - ĐỊA - GDKT&PL"
                 className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 font-medium"
               />
             </div>
