@@ -15,11 +15,14 @@ import {
   Wand2,
   CheckCircle2,
   XCircle,
-  Copy
+  Copy,
+  Sliders,
+  Download
 } from 'lucide-react';
 import { ExamQuestion, ExamHeaderConfig, ShuffledExamVariant } from '../../types';
 import { MathRenderer } from '../../utils/mathRenderer';
 import { generateShuffledExamVariants } from '../../utils/shuffler';
+import { exportSingleVariantToDocx } from '../../utils/docxExport';
 
 interface ExamPreviewStepProps {
   header: ExamHeaderConfig;
@@ -47,15 +50,49 @@ export const ExamPreviewStep: React.FC<ExamPreviewStepProps> = ({
   onGenerateAiExam
 }) => {
   const [viewMode, setViewMode] = useState<'master' | 'variants' | 'matrix_key'>('master');
-  const [selectedVariantCode, setSelectedVariantCode] = useState<'101' | '102' | '103' | '104'>('101');
+  const [variantCount, setVariantCount] = useState<number>(variants.length > 0 ? variants.length : 4);
+  const [startCode, setStartCode] = useState<number>(101);
+  const [selectedVariantCode, setSelectedVariantCode] = useState<string>(variants[0]?.examCode || (variants[0] as any)?.code || '101');
   const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
   const [aiPromptModalQuestion, setAiPromptModalQuestion] = useState<ExamQuestion | null>(null);
   const [customAiPrompt, setCustomAiPrompt] = useState<string>('');
   const [isAssisting, setIsAssisting] = useState(false);
+  const [isCustomShuffleModalOpen, setIsCustomShuffleModalOpen] = useState(false);
+  const [customCodesInput, setCustomCodesInput] = useState<string>('101, 102, 103, 104');
 
-  // Re-shuffle variants on demand
+  // Re-shuffle variants on demand with specified count or startCode
+  const handleReshuffleWithCount = (count: number, customStart: number = startCode) => {
+    setVariantCount(count);
+    setStartCode(customStart);
+    const newVariants = generateShuffledExamVariants(questions, count, customStart);
+    onChangeVariants(newVariants);
+    if (newVariants.length > 0) {
+      setSelectedVariantCode(newVariants[0].examCode || (newVariants[0] as any).code || '101');
+    }
+  };
+
+  const handleApplyCustomCodes = () => {
+    const rawCodes = customCodesInput
+      .split(/[,;\s]+/)
+      .map(c => c.trim())
+      .filter(c => c.length > 0);
+
+    const validCodes = rawCodes.length > 0 ? rawCodes : ['101', '102'];
+    setVariantCount(validCodes.length);
+    const newVariants = generateShuffledExamVariants(questions, validCodes);
+    onChangeVariants(newVariants);
+    if (newVariants.length > 0) {
+      setSelectedVariantCode(newVariants[0].examCode || (newVariants[0] as any).code || validCodes[0]);
+    }
+    setIsCustomShuffleModalOpen(false);
+  };
+
+  // Re-shuffle variants with current settings
   const handleReshuffle = () => {
-    const newVariants = generateShuffledExamVariants(questions);
+    const currentCodes = variants.map(v => v.examCode || (v as any).code || '101');
+    const newVariants = currentCodes.length > 0 
+      ? generateShuffledExamVariants(questions, currentCodes)
+      : generateShuffledExamVariants(questions, variantCount, startCode);
     onChangeVariants(newVariants);
   };
 
@@ -68,7 +105,7 @@ export const ExamPreviewStep: React.FC<ExamPreviewStepProps> = ({
       if (updatedQ) {
         const updatedList = questions.map(q => q.id === updatedQ.id ? updatedQ : q);
         onChangeQuestions(updatedList);
-        onChangeVariants(generateShuffledExamVariants(updatedList));
+        onChangeVariants(generateShuffledExamVariants(updatedList, variantCount, startCode));
       }
       setAiPromptModalQuestion(null);
       setCustomAiPrompt('');
@@ -85,7 +122,16 @@ export const ExamPreviewStep: React.FC<ExamPreviewStepProps> = ({
   const part3Questions = questions.filter(q => q.type === 'short_answer');
   const part4Questions = questions.filter(q => q.type === 'essay');
 
-  const selectedVariant = variants.find(v => v.code === selectedVariantCode) || variants[0];
+  // Find selected variant or fallback
+  const activeVariants = variants && variants.length > 0 
+    ? variants 
+    : generateShuffledExamVariants(questions, variantCount, startCode);
+
+  const selectedVariant = activeVariants.find(v => (v.examCode || (v as any).code) === selectedVariantCode) || activeVariants[0];
+  const variantCodes = activeVariants.map(v => v.examCode || (v as any).code || '101');
+  const codeRangeText = variantCodes.length <= 4 
+    ? variantCodes.join(' - ') 
+    : `${variantCodes[0]} ... ${variantCodes[variantCodes.length - 1]}`;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
@@ -104,7 +150,7 @@ export const ExamPreviewStep: React.FC<ExamPreviewStepProps> = ({
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            📄 Đề Gốc & Lời Giải Chi Tiết ({questions.length} câu)
+            📄 Đề Gốc & Lời Giải ({questions.length} câu)
           </button>
           <button
             id="view-btn-variants"
@@ -115,7 +161,7 @@ export const ExamPreviewStep: React.FC<ExamPreviewStepProps> = ({
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            🔀 4 Mã Đề Trộn (101 - 104)
+            🔀 {activeVariants.length} Mã Đề Trộn ({codeRangeText})
           </button>
           <button
             id="view-btn-matrix-key"
@@ -126,11 +172,11 @@ export const ExamPreviewStep: React.FC<ExamPreviewStepProps> = ({
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            📊 Bảng Soi Đáp Án 4 Mã Đề
+            📊 Bảng Soi Đáp Án ({activeVariants.length} Mã Đề)
           </button>
         </div>
 
-        {/* Reshuffle & Export actions */}
+        {/* Action buttons */}
         <div className="flex flex-wrap items-center gap-2">
           {onSyncQuestionsFromMatrix && (
             <button
@@ -160,9 +206,10 @@ export const ExamPreviewStep: React.FC<ExamPreviewStepProps> = ({
             id="btn-reshuffle"
             onClick={handleReshuffle}
             className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
+            title="Xáo trộn lại thứ tự câu hỏi và đáp án"
           >
             <Shuffle className="w-3.5 h-3.5 text-indigo-600" />
-            <span>Trộn 4 mã đề</span>
+            <span>Trộn lại {activeVariants.length} mã đề</span>
           </button>
 
           <button
@@ -175,6 +222,61 @@ export const ExamPreviewStep: React.FC<ExamPreviewStepProps> = ({
           </button>
         </div>
 
+      </div>
+
+      {/* Flexible Shuffle Control Bar: Allow teacher to freely select 2, 3, 4, 6, 8 variants */}
+      <div className="bg-gradient-to-r from-indigo-50/90 via-blue-50/70 to-slate-50 border border-indigo-100 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4 shadow-xs">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-xs">
+              <Shuffle className="w-4 h-4" />
+            </div>
+            <div>
+              <span className="text-xs font-bold text-slate-900 block">Tùy chọn số lượng mã đề trộn:</span>
+              <span className="text-[11px] text-slate-500">Giáo viên tự do chọn 2, 3, 4 hoặc nhiều mã đề</span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 p-1 bg-white rounded-xl border border-indigo-200 shadow-xs">
+            {[2, 3, 4, 6, 8].map(count => {
+              const isSelected = activeVariants.length === count;
+              return (
+                <button
+                  key={count}
+                  id={`btn-shuffle-count-${count}`}
+                  onClick={() => handleReshuffleWithCount(count)}
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    isSelected
+                      ? 'bg-indigo-600 text-white shadow-xs scale-105'
+                      : 'text-slate-700 hover:bg-indigo-50 hover:text-indigo-700'
+                  }`}
+                >
+                  {count} mã đề
+                </button>
+              );
+            })}
+
+            <button
+              id="btn-custom-shuffle"
+              onClick={() => {
+                setCustomCodesInput(variantCodes.join(', '));
+                setIsCustomShuffleModalOpen(true);
+              }}
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-indigo-700 hover:bg-indigo-50 transition-colors border-l border-slate-200 ml-1"
+              title="Nhập mã đề tùy biến hoặc đổi mã đề bắt đầu"
+            >
+              <Sliders className="w-3.5 h-3.5" />
+              <span>Tùy biến...</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 text-xs text-indigo-900 bg-white/80 px-3.5 py-1.5 rounded-xl border border-indigo-100">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+          <span>
+            Đang trộn: <strong className="font-bold text-indigo-700">{activeVariants.length} mã đề</strong> ({codeRangeText})
+          </span>
+        </div>
       </div>
 
       {/* Sync Status Banner */}
@@ -514,25 +616,56 @@ export const ExamPreviewStep: React.FC<ExamPreviewStepProps> = ({
         </div>
       )}
 
-      {/* VIEW 2: 4 SHUFFLED VARIANTS (101 - 104) */}
+      {/* VIEW 2: SHUFFLED VARIANTS */}
       {viewMode === 'variants' && (
         <div className="space-y-6">
           
           {/* Variant Selector Tabs */}
-          <div className="flex items-center gap-2">
-            {(['101', '102', '103', '104'] as const).map(code => (
+          <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-white rounded-2xl border border-slate-200">
+            <div className="flex flex-wrap items-center gap-2">
+              {activeVariants.map(variant => {
+                const code = variant.examCode || (variant as any).code || '101';
+                const isSelected = selectedVariantCode === code;
+                return (
+                  <button
+                    key={code}
+                    id={`btn-variant-${code}`}
+                    onClick={() => setSelectedVariantCode(code)}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                      isSelected
+                        ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200 scale-105'
+                        : 'bg-slate-50 text-slate-700 border border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    Mã Đề {code}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-500 font-medium hidden sm:inline">
+                Đang xem: <strong className="text-indigo-700">Mã Đề {selectedVariant.examCode || (selectedVariant as any).code}</strong> ({selectedVariant.questions.length} câu)
+              </span>
               <button
-                key={code}
-                onClick={() => setSelectedVariantCode(code)}
-                className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                  selectedVariantCode === code
-                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200 scale-105'
-                    : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
-                }`}
+                id={`btn-download-preview-${selectedVariant.examCode || (selectedVariant as any).code}`}
+                onClick={() => {
+                  const code = selectedVariant.examCode || (selectedVariant as any).code || '101';
+                  exportSingleVariantToDocx({
+                    header,
+                    matrix: [],
+                    specification: [],
+                    sampleExamQuestions: questions,
+                    shuffledVariants: activeVariants,
+                  }, code);
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold transition-colors"
+                title={`Tải ngay file Word Mã Đề ${selectedVariant.examCode || (selectedVariant as any).code}`}
               >
-                Mã Đề {code}
+                <Download className="w-3.5 h-3.5" />
+                <span>Tải Mã {selectedVariant.examCode || (selectedVariant as any).code} (.docx)</span>
               </button>
-            ))}
+            </div>
           </div>
 
           {/* Exam Paper for Selected Variant */}
@@ -544,7 +677,7 @@ export const ExamPreviewStep: React.FC<ExamPreviewStepProps> = ({
                 <p className="font-bold text-xs uppercase text-slate-800">{header.provinceOrDept || 'SỞ GIÁO DỤC VÀ ĐÀO TẠO'}</p>
                 <p className="font-bold text-xs uppercase text-slate-900">{header.schoolName || 'TRƯỜNG THPT CHU VĂN AN'}</p>
                 <div className="mt-2 inline-block px-3 py-1 bg-slate-900 text-white font-mono font-bold text-xs rounded-md">
-                  MÃ ĐỀ THI: {selectedVariant.code}
+                  MÃ ĐỀ THI: {selectedVariant.examCode || (selectedVariant as any).code}
                 </div>
               </div>
               <div>
@@ -557,39 +690,160 @@ export const ExamPreviewStep: React.FC<ExamPreviewStepProps> = ({
             </div>
 
             {/* Questions for this variant */}
-            <div className="space-y-6">
-              {selectedVariant.questions.map((q, idx) => (
-                <div key={q.id} className="space-y-2">
-                  <div className="flex items-start gap-2 text-xs font-serif leading-relaxed">
-                    <span className="font-bold text-slate-900 shrink-0 font-sans">
-                      Câu {idx + 1}:
-                    </span>
-                    <MathRenderer content={q.content} />
+            <div className="space-y-8">
+              
+              {/* PHẦN I TRONG MÃ ĐỀ */}
+              {(() => {
+                const vPart1 = selectedVariant.questions.filter(q => q.type === 'multiple_choice');
+                if (vPart1.length === 0) return null;
+                return (
+                  <div className="space-y-4">
+                    <div className="bg-indigo-50/80 p-3 rounded-xl border border-indigo-100">
+                      <h4 className="font-bold text-xs text-indigo-950 uppercase tracking-wide">
+                        PHẦN I. Câu trắc nghiệm nhiều phương án lựa chọn ({vPart1.length} câu - {(vPart1.length * 0.25).toFixed(2)} điểm)
+                      </h4>
+                      <p className="text-[11px] text-indigo-700 mt-0.5">
+                        Thí sinh trả lời từ câu 1 đến câu {vPart1.length}. Mỗi câu hỏi thí sinh chỉ chọn một phương án.
+                      </p>
+                    </div>
+
+                    <div className="space-y-4">
+                      {vPart1.map((q, idx) => (
+                        <div key={q.id || idx} className="space-y-2">
+                          <div className="flex items-start gap-2 text-xs font-serif leading-relaxed">
+                            <span className="font-bold text-slate-900 shrink-0 font-sans">
+                              Câu {idx + 1}:
+                            </span>
+                            <MathRenderer content={q.content} />
+                          </div>
+
+                          {q.options && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-xs font-serif pl-4">
+                              {q.options.map(opt => (
+                                <div key={opt.key} className="flex items-center gap-1.5">
+                                  <span className="font-bold text-slate-800">{opt.key}.</span>
+                                  <MathRenderer content={opt.content} />
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
+                );
+              })()}
 
-                  {q.type === 'multiple_choice' && q.options && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-xs font-serif pl-4">
-                      {q.options.map(opt => (
-                        <div key={opt.key} className="flex items-center gap-1.5">
-                          <span className="font-bold text-slate-800">{opt.key}.</span>
-                          <MathRenderer content={opt.content} />
+              {/* PHẦN II TRONG MÃ ĐỀ (Đếm lại từ câu 1) */}
+              {(() => {
+                const vPart2 = selectedVariant.questions.filter(q => q.type === 'true_false');
+                if (vPart2.length === 0) return null;
+                return (
+                  <div className="space-y-4">
+                    <div className="bg-blue-50/80 p-3 rounded-xl border border-blue-100">
+                      <h4 className="font-bold text-xs text-blue-950 uppercase tracking-wide">
+                        PHẦN II. Câu trắc nghiệm đúng sai ({vPart2.length} câu - {(vPart2.length * 1.0).toFixed(2)} điểm)
+                      </h4>
+                      <p className="text-[11px] text-blue-700 mt-0.5">
+                        Thí sinh trả lời từ câu 1 đến câu {vPart2.length}. Trong mỗi ý a), b), c), d) ở mỗi câu, thí sinh chọn Đúng hoặc Sai.
+                      </p>
+                    </div>
+
+                    <div className="space-y-4">
+                      {vPart2.map((q, idx) => (
+                        <div key={q.id || idx} className="space-y-2">
+                          <div className="flex items-start gap-2 text-xs font-serif leading-relaxed">
+                            <span className="font-bold text-slate-900 shrink-0 font-sans">
+                              Câu {idx + 1}:
+                            </span>
+                            <MathRenderer content={q.content} />
+                          </div>
+
+                          {q.trueFalseItems && (
+                            <div className="space-y-1 pl-4 text-xs font-serif">
+                              {q.trueFalseItems.map(item => (
+                                <div key={item.key} className="flex items-center gap-2">
+                                  <span className="font-bold text-slate-800">{item.key})</span>
+                                  <MathRenderer content={item.statement} />
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
-                  )}
+                  </div>
+                );
+              })()}
 
-                  {q.type === 'true_false' && q.trueFalseItems && (
-                    <div className="space-y-1 pl-4 text-xs font-serif">
-                      {q.trueFalseItems.map(item => (
-                        <div key={item.key} className="flex items-center gap-2">
-                          <span className="font-bold text-slate-800">{item.key})</span>
-                          <MathRenderer content={item.statement} />
+              {/* PHẦN III TRONG MÃ ĐỀ (Đếm lại từ câu 1) */}
+              {(() => {
+                const vPart3 = selectedVariant.questions.filter(q => q.type === 'short_answer');
+                if (vPart3.length === 0) return null;
+                return (
+                  <div className="space-y-4">
+                    <div className="bg-emerald-50/80 p-3 rounded-xl border border-emerald-100">
+                      <h4 className="font-bold text-xs text-emerald-950 uppercase tracking-wide">
+                        PHẦN III. Câu trắc nghiệm trả lời ngắn ({vPart3.length} câu - {(vPart3.length * 0.5).toFixed(2)} điểm)
+                      </h4>
+                      <p className="text-[11px] text-emerald-700 mt-0.5">
+                        Thí sinh trả lời từ câu 1 đến câu {vPart3.length}. Điền kết quả vào ô tương ứng trên phiếu trả lời.
+                      </p>
+                    </div>
+
+                    <div className="space-y-4">
+                      {vPart3.map((q, idx) => (
+                        <div key={q.id || idx} className="space-y-2">
+                          <div className="flex items-start gap-2 text-xs font-serif leading-relaxed">
+                            <span className="font-bold text-slate-900 shrink-0 font-sans">
+                              Câu {idx + 1}:
+                            </span>
+                            <MathRenderer content={q.content} />
+                          </div>
+                          <div className="pl-4 text-xs font-serif text-slate-500 italic">
+                            [Học sinh điền kết quả vào ô trả lời]
+                          </div>
                         </div>
                       ))}
                     </div>
-                  )}
-                </div>
-              ))}
+                  </div>
+                );
+              })()}
+
+              {/* PHẦN IV TRONG MÃ ĐỀ (Đếm lại từ câu 1) */}
+              {(() => {
+                const vPart4 = selectedVariant.questions.filter(q => q.type === 'essay');
+                if (vPart4.length === 0) return null;
+                return (
+                  <div className="space-y-4">
+                    <div className="bg-amber-50/80 p-3 rounded-xl border border-amber-100">
+                      <h4 className="font-bold text-xs text-amber-950 uppercase tracking-wide">
+                        PHẦN IV. Tự luận ({vPart4.length} câu)
+                      </h4>
+                      <p className="text-[11px] text-amber-700 mt-0.5">
+                        Thí sinh trình bày bài làm tự luận vào giấy thi.
+                      </p>
+                    </div>
+
+                    <div className="space-y-4">
+                      {vPart4.map((q, idx) => (
+                        <div key={q.id || idx} className="space-y-2">
+                          <div className="flex items-start gap-2 text-xs font-serif leading-relaxed">
+                            <span className="font-bold text-slate-900 shrink-0 font-sans">
+                              Câu {idx + 1} ({q.points || 1.0} điểm):
+                            </span>
+                            <MathRenderer content={q.content} />
+                          </div>
+                          <div className="pl-4 text-xs font-serif text-slate-500 italic">
+                            [Học sinh trình bày bài làm tự luận vào giấy thi]
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+
             </div>
 
           </div>
@@ -599,57 +853,250 @@ export const ExamPreviewStep: React.FC<ExamPreviewStepProps> = ({
 
       {/* VIEW 3: MASTER ANSWER KEY COMPARISON TABLE */}
       {viewMode === 'matrix_key' && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden p-6 space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden p-6 space-y-6">
+          <div className="flex flex-wrap items-center justify-between pb-3 border-b border-slate-100 gap-3">
             <div>
               <h4 className="text-sm font-bold text-slate-900">
-                Bảng Soi & Đối Chiếu Đáp Án 4 Mã Đề (101 - 102 - 103 - 104)
+                Bảng Soi & Đối Chiếu Đáp Án ({activeVariants.length} Mã Đề: {codeRangeText})
               </h4>
               <p className="text-xs text-slate-500">
-                Bảng chuẩn phục vụ giáo viên chấm nhanh bài làm trắc nghiệm của học sinh
+                Bảng chuẩn phục vụ giáo viên chấm nhanh bài làm trắc nghiệm của học sinh (đếm từ Câu 1 theo từng phần)
               </p>
             </div>
-            <button
-              onClick={handleReshuffle}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors"
-            >
-              <Shuffle className="w-3.5 h-3.5" />
-              <span>Trộn lại</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleReshuffle}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors"
+              >
+                <Shuffle className="w-3.5 h-3.5" />
+                <span>Trộn lại</span>
+              </button>
+            </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs text-center border-collapse">
-              <thead>
-                <tr className="bg-slate-100 text-slate-800 font-bold border-b border-slate-200">
-                  <th className="p-2.5 border-r border-slate-200">Câu số</th>
-                  <th className="p-2.5 border-r border-slate-200 bg-indigo-50 text-indigo-900">Mã Đề 101</th>
-                  <th className="p-2.5 border-r border-slate-200 bg-blue-50 text-blue-900">Mã Đề 102</th>
-                  <th className="p-2.5 border-r border-slate-200 bg-emerald-50 text-emerald-900">Mã Đề 103</th>
-                  <th className="p-2.5 bg-amber-50 text-amber-900">Mã Đề 104</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200 font-mono">
-                {questions.filter(q => q.type === 'multiple_choice').map((_, idx) => {
-                  const k101 = variants.find(v => v.code === '101')?.answerKey[idx + 1] || 'A';
-                  const k102 = variants.find(v => v.code === '102')?.answerKey[idx + 1] || 'B';
-                  const k103 = variants.find(v => v.code === '103')?.answerKey[idx + 1] || 'C';
-                  const k104 = variants.find(v => v.code === '104')?.answerKey[idx + 1] || 'D';
-
-                  return (
-                    <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                      <td className="p-2 font-sans font-bold text-slate-600 border-r border-slate-200">
-                        Câu {idx + 1}
-                      </td>
-                      <td className="p-2 font-bold text-indigo-700 bg-indigo-50/30 border-r border-slate-200">{k101}</td>
-                      <td className="p-2 font-bold text-blue-700 bg-blue-50/30 border-r border-slate-200">{k102}</td>
-                      <td className="p-2 font-bold text-emerald-700 bg-emerald-50/30 border-r border-slate-200">{k103}</td>
-                      <td className="p-2 font-bold text-amber-700 bg-amber-50/30">{k104}</td>
+          {/* BẢNG PHẦN I */}
+          {questions.filter(q => q.type === 'multiple_choice').length > 0 && (
+            <div className="space-y-2">
+              <div className="font-bold text-xs text-indigo-900 uppercase">
+                1. Đáp án Phần I: Câu trắc nghiệm nhiều phương án lựa chọn
+              </div>
+              <div className="overflow-x-auto border border-slate-200 rounded-xl">
+                <table className="w-full text-xs text-center border-collapse">
+                  <thead>
+                    <tr className="bg-slate-100 text-slate-800 font-bold border-b border-slate-200">
+                      <th className="p-2.5 border-r border-slate-200 text-left pl-4 min-w-[90px]">Câu số</th>
+                      {activeVariants.map((variant, vIdx) => {
+                        const code = variant.examCode || (variant as any).code || `Mã ${vIdx + 1}`;
+                        return (
+                          <th key={code} className="p-2.5 border-r border-slate-200 last:border-r-0 bg-indigo-50 text-indigo-900">
+                            Mã {code}
+                          </th>
+                        );
+                      })}
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 font-mono">
+                    {questions.filter(q => q.type === 'multiple_choice').map((_, idx) => {
+                      return (
+                        <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                          <td className="p-2 font-sans font-bold text-slate-600 border-r border-slate-200 text-left pl-4">
+                            Câu {idx + 1}
+                          </td>
+                          {activeVariants.map((variant, vIdx) => {
+                            const code = variant.examCode || (variant as any).code;
+                            const key = variant.part1AnswerKeys?.[idx + 1] || variant.answerKey?.[idx + 1] || 'A';
+                            return (
+                              <td key={code || vIdx} className="p-2 font-bold border-r border-slate-200 last:border-r-0 text-indigo-700 bg-indigo-50/20">
+                                {key}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* BẢNG PHẦN II (Đếm lại từ câu 1) */}
+          {questions.filter(q => q.type === 'true_false').length > 0 && (
+            <div className="space-y-2">
+              <div className="font-bold text-xs text-blue-900 uppercase">
+                2. Đáp án Phần II: Câu trắc nghiệm đúng sai (Đếm từ Câu 1)
+              </div>
+              <div className="overflow-x-auto border border-slate-200 rounded-xl">
+                <table className="w-full text-xs text-center border-collapse">
+                  <thead>
+                    <tr className="bg-slate-100 text-slate-800 font-bold border-b border-slate-200">
+                      <th className="p-2.5 border-r border-slate-200 text-left pl-4 min-w-[90px]">Câu số</th>
+                      {activeVariants.map((variant, vIdx) => {
+                        const code = variant.examCode || (variant as any).code || `Mã ${vIdx + 1}`;
+                        return (
+                          <th key={code} className="p-2.5 border-r border-slate-200 last:border-r-0 bg-blue-50 text-blue-900">
+                            Mã {code}
+                          </th>
+                        );
+                      })}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 font-mono">
+                    {questions.filter(q => q.type === 'true_false').map((_, idx) => {
+                      return (
+                        <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                          <td className="p-2 font-sans font-bold text-slate-600 border-r border-slate-200 text-left pl-4">
+                            Câu {idx + 1}
+                          </td>
+                          {activeVariants.map((variant, vIdx) => {
+                            const code = variant.examCode || (variant as any).code;
+                            const key = variant.part2AnswerKeys?.[idx + 1] || 'a: Đ | b: S | c: Đ | d: S';
+                            return (
+                              <td key={code || vIdx} className="p-2 font-medium text-[11px] border-r border-slate-200 last:border-r-0 text-blue-800 bg-blue-50/20">
+                                {key}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* BẢNG PHẦN III (Đếm lại từ câu 1) */}
+          {questions.filter(q => q.type === 'short_answer').length > 0 && (
+            <div className="space-y-2">
+              <div className="font-bold text-xs text-emerald-900 uppercase">
+                3. Đáp án Phần III: Câu trắc nghiệm trả lời ngắn (Đếm từ Câu 1)
+              </div>
+              <div className="overflow-x-auto border border-slate-200 rounded-xl">
+                <table className="w-full text-xs text-center border-collapse">
+                  <thead>
+                    <tr className="bg-slate-100 text-slate-800 font-bold border-b border-slate-200">
+                      <th className="p-2.5 border-r border-slate-200 text-left pl-4 min-w-[90px]">Câu số</th>
+                      {activeVariants.map((variant, vIdx) => {
+                        const code = variant.examCode || (variant as any).code || `Mã ${vIdx + 1}`;
+                        return (
+                          <th key={code} className="p-2.5 border-r border-slate-200 last:border-r-0 bg-emerald-50 text-emerald-900">
+                            Mã {code}
+                          </th>
+                        );
+                      })}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 font-mono">
+                    {questions.filter(q => q.type === 'short_answer').map((_, idx) => {
+                      return (
+                        <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                          <td className="p-2 font-sans font-bold text-slate-600 border-r border-slate-200 text-left pl-4">
+                            Câu {idx + 1}
+                          </td>
+                          {activeVariants.map((variant, vIdx) => {
+                            const code = variant.examCode || (variant as any).code;
+                            const key = variant.part3AnswerKeys?.[idx + 1] || '—';
+                            return (
+                              <td key={code || vIdx} className="p-2 font-bold border-r border-slate-200 last:border-r-0 text-emerald-800 bg-emerald-50/20">
+                                {key}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Custom Shuffle Codes Modal */}
+      {isCustomShuffleModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in duration-150 space-y-4 p-6">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <Sliders className="w-5 h-5 text-indigo-600" />
+                <h3 className="font-bold text-slate-900 text-sm">Tùy biến Mã Đề Thi</h3>
+              </div>
+              <button onClick={() => setIsCustomShuffleModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+                <XCircle className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Nhập danh sách mã đề (ngăn cách bởi dấu phẩy):
+                </label>
+                <input
+                  type="text"
+                  value={customCodesInput}
+                  onChange={(e) => setCustomCodesInput(e.target.value)}
+                  placeholder="Ví dụ: 101, 102, 103, 104, 105"
+                  className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 font-mono"
+                />
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Nhập bất kỳ số lượng mã đề nào (2, 3, 4, 5, 6, 8,...) hoặc các ký hiệu như 201, 202, A1, A2.
+                </p>
+              </div>
+
+              <div className="p-3 bg-indigo-50/50 rounded-xl border border-indigo-100 text-xs text-indigo-900 space-y-1">
+                <span className="font-bold block">Gợi ý thiết lập nhanh:</span>
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setCustomCodesInput('101, 102')}
+                    className="px-2 py-1 bg-white hover:bg-indigo-100 border border-indigo-200 rounded-md text-[11px] font-mono text-indigo-700"
+                  >
+                    2 đề: 101, 102
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCustomCodesInput('101, 102, 103')}
+                    className="px-2 py-1 bg-white hover:bg-indigo-100 border border-indigo-200 rounded-md text-[11px] font-mono text-indigo-700"
+                  >
+                    3 đề: 101, 102, 103
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCustomCodesInput('101, 102, 103, 104')}
+                    className="px-2 py-1 bg-white hover:bg-indigo-100 border border-indigo-200 rounded-md text-[11px] font-mono text-indigo-700"
+                  >
+                    4 đề: 101, 102, 103, 104
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCustomCodesInput('101, 102, 103, 104, 105, 106')}
+                    className="px-2 py-1 bg-white hover:bg-indigo-100 border border-indigo-200 rounded-md text-[11px] font-mono text-indigo-700"
+                  >
+                    6 đề: 101..106
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-2 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setIsCustomShuffleModalOpen(false)}
+                className="px-4 py-2 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                onClick={handleApplyCustomCodes}
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm transition-colors"
+              >
+                <Check className="w-3.5 h-3.5" />
+                <span>Áp dụng & Trộn đề</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

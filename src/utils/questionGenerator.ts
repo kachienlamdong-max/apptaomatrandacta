@@ -66,6 +66,7 @@ export function generateConsistentQuestionsFromMatrixAndSpec(
 
   // Track counts to generate corresponding questions per matrix row
   // 1. GENERATE PART I QUESTIONS (Multiple Choice)
+  let p1Order = 1;
   matrix.forEach((row, rowIndex) => {
     const spec = specification[rowIndex];
     const rowCounts = [
@@ -86,7 +87,7 @@ export function generateConsistentQuestionsFromMatrixAndSpec(
           type: 'multiple_choice',
           level,
           objective: obj,
-          orderNumber: globalOrder++,
+          orderNumber: p1Order++,
           points: p1Pts,
           index: i
         });
@@ -95,7 +96,8 @@ export function generateConsistentQuestionsFromMatrixAndSpec(
     });
   });
 
-  // 2. GENERATE PART II QUESTIONS (True / False)
+  // 2. GENERATE PART II QUESTIONS (True / False - count restarts from 1)
+  let p2Order = 1;
   matrix.forEach((row, rowIndex) => {
     const spec = specification[rowIndex];
     const rowCounts = [
@@ -116,7 +118,7 @@ export function generateConsistentQuestionsFromMatrixAndSpec(
           type: 'true_false',
           level,
           objective: obj,
-          orderNumber: globalOrder++,
+          orderNumber: p2Order++,
           points: p2Pts,
           index: i
         });
@@ -125,7 +127,8 @@ export function generateConsistentQuestionsFromMatrixAndSpec(
     });
   });
 
-  // 3. GENERATE PART III QUESTIONS (Short Answer)
+  // 3. GENERATE PART III QUESTIONS (Short Answer - count restarts from 1)
+  let p3Order = 1;
   matrix.forEach((row, rowIndex) => {
     const spec = specification[rowIndex];
     const rowCounts = [
@@ -146,7 +149,7 @@ export function generateConsistentQuestionsFromMatrixAndSpec(
           type: 'short_answer',
           level,
           objective: obj,
-          orderNumber: globalOrder++,
+          orderNumber: p3Order++,
           points: p3Pts,
           index: i
         });
@@ -155,7 +158,8 @@ export function generateConsistentQuestionsFromMatrixAndSpec(
     });
   });
 
-  // 4. GENERATE PART IV QUESTIONS (Essay)
+  // 4. GENERATE PART IV QUESTIONS (Essay - count restarts from 1)
+  let p4Order = 1;
   matrix.forEach((row, rowIndex) => {
     const spec = specification[rowIndex];
     const rowCounts = [
@@ -176,7 +180,7 @@ export function generateConsistentQuestionsFromMatrixAndSpec(
           type: 'essay',
           level,
           objective: obj,
-          orderNumber: globalOrder++,
+          orderNumber: p4Order++,
           points: p4Pts,
           index: i
         });

@@ -140,13 +140,19 @@ export interface ExamHeaderConfig {
 }
 
 export interface ShuffledExamVariant {
-  examCode: string; // 101, 102, 103, 104
+  examCode: string; // 101, 102, 103, 104...
+  code?: string; // alias for convenient access
   questions: ExamQuestion[];
   answerKeySummary: {
+    part?: 'part1' | 'part2' | 'part3' | 'part4';
     questionNumber: number;
     type: QuestionType;
     correctAnswer: string;
   }[];
+  answerKey?: Record<number, string>;
+  part1AnswerKeys?: Record<number, string>;
+  part2AnswerKeys?: Record<number, string>;
+  part3AnswerKeys?: Record<number, string>;
 }
 
 export interface ExamProject {
