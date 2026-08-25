@@ -322,16 +322,62 @@ function getUniqueMCQuestion(ctx: SelectionContext): ExamQuestion {
     ];
     correctOpt = 'A';
     explanation = `$X$ có nhóm chức -COO- liên kết gốc hiđrocacbon no nên thuộc loại este no, đơn chức, mạch hở.`;
-  } else {
-    synthContent = `Trong chương trình ${subjectName} (${ctx.grade}), liên quan đến nội dung "${unit}", nhận định nào sau đây là hoàn toàn đúng?`;
+  } else if (ctx.subjectKey === 'dia-li') {
+    const leadIns = [
+      `Đặc điểm nổi bật của ${unit} ở nước ta hiện nay là:`,
+      `Nguyên nhân chủ yếu thúc đẩy sự phát triển của ${unit} ở nước ta là:`,
+      `Ý nghĩa kinh tế - xã hội quan trọng nhất của việc phát triển ${unit} là:`,
+      `Giải pháp chủ yếu để nâng cao hiệu quả và giá trị của ${unit} hiện nay là:`
+    ];
+    synthContent = leadIns[v % leadIns.length];
     options = [
-      { key: 'A', content: `Nắm vững các quy luật cốt lõi của ${unit} để giải quyết hiệu quả các tình huống thực tiễn.` },
-      { key: 'B', content: `Chỉ ghi nhớ máy móc các định nghĩa mà không cần liên hệ thực tế.` },
-      { key: 'C', content: `Bỏ qua các nguyên lí phát triển bền vững và tính hệ thống của kiến thức.` },
-      { key: 'D', content: `Không cần tuân thủ các bước quy trình khoa học trong quá trình tìm hiểu.` }
+      { key: 'A', content: `Đẩy mạnh ứng dụng khoa học kĩ thuật, gắn liền chế biến với mở rộng thị trường.` },
+      { key: 'B', content: `Chỉ tập trung khai thác tài nguyên tự nhiên dạng thô với quy mô phân tán.` },
+      { key: 'C', content: `Hạn chế liên kết vùng và giảm bớt thu hút các nguồn vốn đầu tư bên ngoài.` },
+      { key: 'D', content: `Duy trì phương thức sản xuất truyền thống, không cần đổi mới quy trình công nghệ.` }
     ];
     correctOpt = 'A';
-    explanation = `Khẳng định A đúng vì yêu cầu cần đạt của bài học "${unit}" đòi hỏi học sinh hiểu sâu và vận dụng sáng tạo vào đời sống.`;
+    explanation = `Khẳng định A đúng vì định hướng nâng cao hiệu quả ${unit} luôn gắn với ứng dụng công nghệ, chế biến sâu và mở rộng thị trường tiêu thụ.`;
+  } else if (ctx.subjectKey === 'lich-su') {
+    const leadIns = [
+      `Nội dung nào sau đây phản ánh đúng ý nghĩa lịch sử của ${unit}?`,
+      `Nguyên nhân mang tính quyết định thắng lợi của ${unit} là:`,
+      `Bài học kinh nghiệm quý báu được rút ra từ ${unit} đối với công cuộc đổi mới hiện nay là:`
+    ];
+    synthContent = leadIns[v % leadIns.length];
+    options = [
+      { key: 'A', content: `Phát huy sức mạnh khối đại đoàn kết toàn dân tộc dưới sự lãnh đạo đúng đắn, sáng tạo.` },
+      { key: 'B', content: `Chỉ trông chờ vào sự viện trợ giúp đỡ trực tiếp từ bên ngoài mà thiếu tính tự lực.` },
+      { key: 'C', content: 'Không chú trọng xây dựng và củng cố căn cứ địa cách mạng ở hậu phương.' },
+      { key: 'D', content: 'Rời bỏ mục tiêu độc lập dân tộc gắn liền với tiến bộ xã hội.' }
+    ];
+    correctOpt = 'A';
+    explanation = `Khẳng định A phản ánh đúng bài học lịch sử cốt lõi về khối đại đoàn kết toàn dân và vai trò lãnh đạo đường lối.`;
+  } else if (ctx.subjectKey === 'gdkt-pl') {
+    synthContent = `Theo quy định của pháp luật hiện hành, hành vi nào sau đây thể hiện việc thực hiện đúng quyền và nghĩa vụ liên quan đến ${unit}?`;
+    options = [
+      { key: 'A', content: `Chủ động tìm hiểu, tuân thủ đúng quy định và có ý thức bảo vệ lợi ích công cộng.` },
+      { key: 'B', content: `Tự ý thay đổi quy trình pháp lí mà không thông qua cơ quan chức năng có thẩm quyền.` },
+      { key: 'C', content: `Từ chối thực hiện nghĩa vụ công dân khi gặp các trở ngại khách quan trong đời sống.` },
+      { key: 'D', content: `Chỉ thực hiện quyền lợi cá nhân mà bỏ qua nghĩa vụ và trách nhiệm đối với xã hội.` }
+    ];
+    correctOpt = 'A';
+    explanation = `Khẳng định A thể hiện công dân gương mẫu, kết hợp hài hòa quyền lợi và trách nhiệm pháp lí.`;
+  } else {
+    const leadIns = [
+      `Phát biểu nào sau đây là đúng khi nói về đặc điểm của ${unit}?`,
+      `Nội dung nào sau đây phản ánh chính xác bản chất của ${unit}?`,
+      `Giải pháp trọng tâm để nâng cao hiệu quả ứng dụng của ${unit} trong thực tiễn là:`
+    ];
+    synthContent = leadIns[v % leadIns.length];
+    options = [
+      { key: 'A', content: `Nắm vững nguyên lí cốt lõi và vận dụng linh hoạt, sáng tạo vào thực tiễn.` },
+      { key: 'B', content: `Chỉ học thuộc lòng máy móc định nghĩa mà không cần liên hệ kiểm chứng thực tế.` },
+      { key: 'C', content: `Bỏ qua các quy luật vận động khách quan và tính hệ thống của tri thức.` },
+      { key: 'D', content: `Không tuân thủ các chuẩn mực và quy trình khoa học đã được kiểm định.` }
+    ];
+    correctOpt = 'A';
+    explanation = `Khẳng định A đúng vì yêu cầu cốt lõi của "${unit}" là hiểu sâu bản chất và vận dụng linh hoạt, hiệu quả vào thực tiễn.`;
   }
 
   ctx.usedContents.add(synthContent);
@@ -384,16 +430,15 @@ function getUniqueTFQuestion(ctx: SelectionContext): ExamQuestion {
 
   // Synthesize rich, non-repeating True/False questions with distinct contexts
   const unit = ctx.unit || ctx.topic;
-  const order = ctx.orderNumber;
   
-  const synthContent = `Đọc đoạn thông tin sau và xét tính đúng/sai của các nhận định liên quan đến "${ctx.topic} - ${unit}":\n"Trong bối cảnh phát triển của ${ctx.subjectName} hiện đại, nội dung ${unit} đóng vai trò then chốt trong việc hình thành tư duy khoa học, mô hình hóa dữ liệu thực nghiệm và giải quyết các bài toán thực tiễn gắn liền với đời sống xã hội."\n(Nguồn: Tài liệu bồi dưỡng Giáo dục phổ thông, Bộ GD&ĐT, Chuyên đề ${order})`;
+  const synthContent = `Cho thông tin sau:\n"Nội dung ${unit} đóng vai trò quan trọng trong việc phân tích các quy luật khoa học, kiểm chứng số liệu thực nghiệm và giải quyết các bài toán thực tiễn gắn liền với đời sống kinh tế - xã hội."\nXét tính đúng/sai của các nhận định:`;
 
   const items: TrueFalseSubItem[] = [
     {
       key: 'a',
-      statement: `Nội dung ${unit} cung cấp các khái niệm và nguyên lí nền tảng của môn ${ctx.subjectName}.`,
+      statement: `Nội dung ${unit} cung cấp các khái niệm và nguyên lí nền tảng cần đạt.`,
       isCorrect: true,
-      explanation: 'Đúng (Mức Biết): Khái niệm cơ bản được quy định rõ trong chương trình.'
+      explanation: 'Đúng (Mức Biết): Khái niệm cơ bản được quy định rõ trong chuẩn kiến thức.'
     },
     {
       key: 'b',
