@@ -7,8 +7,11 @@ export type SchoolLevel = 'Tiểu học' | 'THCS' | 'THPT';
 
 export type StructureOption = 
   | 'option_1' // TN 4 lựa chọn + Đúng/Sai + Trả lời ngắn + Tự luận (Chuẩn Bộ 2025)
-  | 'option_2' // TN 4 lựa chọn + Đúng/Sai + Tự luận
-  | 'option_3' // TN 4 lựa chọn + Đúng/Sai + Trả lời ngắn
+  | 'option_2' // TN 4 lựa chọn + Đúng/Sai + Tự luận (Khóa Trả lời ngắn)
+  | 'option_3' // TN 4 lựa chọn + Đúng/Sai + Trả lời ngắn (Khóa Tự luận)
+  | 'option_tuluan' // 100% Tự luận (Đặc thù môn Ngữ văn / Bài thi Tự luận - Khóa Trắc nghiệm)
+  | 'option_tn_tl_70_30' // 70% Trắc nghiệm + 30% Tự luận (Khóa Đúng/Sai & Trả lời ngắn)
+  | 'option_tn_100' // 100% Trắc nghiệm 4 lựa chọn (Khóa Đúng/Sai, Trả lời ngắn & Tự luận)
   | 'option_4'; // Tùy chỉnh tự do
 
 export type CognitiveLevel = 'Nhận biết' | 'Thông hiểu' | 'Vận dụng' | 'Vận dụng cao';

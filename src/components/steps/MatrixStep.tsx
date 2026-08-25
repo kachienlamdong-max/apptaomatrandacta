@@ -25,9 +25,10 @@ import {
   Settings2,
   Check
 } from 'lucide-react';
-import { MatrixRow, SpecificationItem, ExamHeaderConfig, ExamPartConfigs, PartConfig } from '../../types';
+import { MatrixRow, SpecificationItem, ExamHeaderConfig, ExamPartConfigs, PartConfig, StructureOption } from '../../types';
 import { SUBJECTS_LIST } from '../../data/curriculumData';
 import { DEFAULT_PART_CONFIGS } from '../../data/defaultProjects';
+import { getStructurePartConfigs, sanitizeMatrixForPartConfigs, STRUCTURE_OPTIONS_METADATA } from '../../utils/structurePresets';
 
 interface MatrixStepProps {
   header: ExamHeaderConfig;
@@ -64,10 +65,15 @@ export const MatrixStep: React.FC<MatrixStepProps> = ({
   // Active Part configurations with fallback to defaults
   const partConfigs: ExamPartConfigs = header.partConfigs || DEFAULT_PART_CONFIGS;
 
-  const p1_pts = partConfigs.part1?.pointsPerQuestion ?? 0.25;
-  const p2_pts = partConfigs.part2?.pointsPerQuestion ?? 1.0;
-  const p3_pts = partConfigs.part3?.pointsPerQuestion ?? 0.5;
-  const p4_pts = partConfigs.part4?.pointsPerQuestion ?? 1.0;
+  const isP1Active = (partConfigs.part1?.enabled ?? true) && (partConfigs.part1?.targetQuestions ?? 12) > 0;
+  const isP2Active = (partConfigs.part2?.enabled ?? true) && (partConfigs.part2?.targetQuestions ?? 4) > 0;
+  const isP3Active = (partConfigs.part3?.enabled ?? true) && (partConfigs.part3?.targetQuestions ?? 6) > 0;
+  const isP4Active = (partConfigs.part4?.enabled ?? true) && (partConfigs.part4?.targetQuestions ?? 2) > 0;
+
+  const p1_pts = isP1Active ? (partConfigs.part1?.pointsPerQuestion ?? 0.25) : 0;
+  const p2_pts = isP2Active ? (partConfigs.part2?.pointsPerQuestion ?? 1.0) : 0;
+  const p3_pts = isP3Active ? (partConfigs.part3?.pointsPerQuestion ?? 0.5) : 0;
+  const p4_pts = isP4Active ? (partConfigs.part4?.pointsPerQuestion ?? 1.0) : 0;
 
   const p1_target = partConfigs.part1?.targetQuestions ?? 12;
   const p2_target = partConfigs.part2?.targetQuestions ?? 4;
@@ -101,25 +107,9 @@ export const MatrixStep: React.FC<MatrixStepProps> = ({
       });
     }
 
-    // If point per question changes, recalculate row points for all rows
-    if (field === 'pointsPerQuestion') {
-      const curP1Pts = partKey === 'part1' ? Number(parsedValue) : (newConfigs.part1?.pointsPerQuestion ?? 0.25);
-      const curP2Pts = partKey === 'part2' ? Number(parsedValue) : (newConfigs.part2?.pointsPerQuestion ?? 1.0);
-      const curP3Pts = partKey === 'part3' ? Number(parsedValue) : (newConfigs.part3?.pointsPerQuestion ?? 0.5);
-      const curP4Pts = partKey === 'part4' ? Number(parsedValue) : (newConfigs.part4?.pointsPerQuestion ?? 1.0);
-
-      const updated = matrix.map(row => {
-        const p1Score = (row.part1_nb + row.part1_th + row.part1_vd + row.part1_vdc) * curP1Pts;
-        const p2Score = (row.part2_nb + row.part2_th + row.part2_vd + row.part2_vdc) * curP2Pts;
-        const p3Score = (row.part3_nb + row.part3_th + row.part3_vd + row.part3_vdc) * curP3Pts;
-        const p4Score = (row.part4_nb + row.part4_th + row.part4_vd + row.part4_vdc) * curP4Pts;
-        return {
-          ...row,
-          totalPoints: Number((p1Score + p2Score + p3Score + p4Score).toFixed(2))
-        };
-      });
-      onChangeMatrix(updated);
-    }
+    // Always sanitize and recalculate matrix when parts are toggled or modified
+    const sanitized = sanitizeMatrixForPartConfigs(matrix, newConfigs);
+    onChangeMatrix(sanitized);
   };
 
   // Quick adjust point per question with +/- step
@@ -136,72 +126,48 @@ export const MatrixStep: React.FC<MatrixStepProps> = ({
     handleUpdatePartConfig(partKey, 'targetQuestions', newVal);
   };
 
-  // Preset structure loader
-  const handleApplyPreset = (presetKey: 'bo_2025' | 'tn_tuluan_70_30' | 'ket_hop_4_phan' | 'tn_100') => {
-    let newConfigs: ExamPartConfigs;
-    if (presetKey === 'bo_2025') {
-      newConfigs = {
-        part1: { name: 'Phần I: TN 4 lựa chọn', pointsPerQuestion: 0.25, targetQuestions: 12, enabled: true, description: '12 câu TN 4 lựa chọn (3.0đ)' },
-        part2: { name: 'Phần II: TN Đúng/Sai', pointsPerQuestion: 1.0, targetQuestions: 4, enabled: true, description: '4 câu Đúng/Sai (4.0đ)' },
-        part3: { name: 'Phần III: Trả lời ngắn', pointsPerQuestion: 0.5, targetQuestions: 6, enabled: true, description: '6 câu Trả lời ngắn (3.0đ)' },
-        part4: { name: 'Phần IV: Tự luận', pointsPerQuestion: 1.0, targetQuestions: 0, enabled: false, description: 'Không có tự luận' },
-      };
-    } else if (presetKey === 'tn_tuluan_70_30') {
-      newConfigs = {
-        part1: { name: 'Phần I: TN 4 lựa chọn', pointsPerQuestion: 0.25, targetQuestions: 28, enabled: true, description: '28 câu TN (7.0đ)' },
-        part2: { name: 'Phần II: TN Đúng/Sai', pointsPerQuestion: 1.0, targetQuestions: 0, enabled: false, description: 'Tắt' },
-        part3: { name: 'Phần III: Trả lời ngắn', pointsPerQuestion: 0.5, targetQuestions: 0, enabled: false, description: 'Tắt' },
-        part4: { name: 'Phần IV: Tự luận', pointsPerQuestion: 1.0, targetQuestions: 3, enabled: true, description: '3 câu tự luận (3.0đ)' },
-      };
-    } else if (presetKey === 'ket_hop_4_phan') {
-      newConfigs = {
-        part1: { name: 'Phần I: TN 4 lựa chọn', pointsPerQuestion: 0.25, targetQuestions: 16, enabled: true, description: '16 câu TN (4.0đ)' },
-        part2: { name: 'Phần II: TN Đúng/Sai', pointsPerQuestion: 1.0, targetQuestions: 2, enabled: true, description: '2 câu Đúng/Sai (2.0đ)' },
-        part3: { name: 'Phần III: Trả lời ngắn', pointsPerQuestion: 0.5, targetQuestions: 4, enabled: true, description: '4 câu Trả lời ngắn (2.0đ)' },
-        part4: { name: 'Phần IV: Tự luận', pointsPerQuestion: 1.0, targetQuestions: 2, enabled: true, description: '2 câu tự luận (2.0đ)' },
-      };
-    } else {
-      newConfigs = {
-        part1: { name: 'Phần I: TN 4 lựa chọn', pointsPerQuestion: 0.25, targetQuestions: 40, enabled: true, description: '40 câu TN 4 lựa chọn (10.0đ)' },
-        part2: { name: 'Phần II: TN Đúng/Sai', pointsPerQuestion: 1.0, targetQuestions: 0, enabled: false, description: 'Tắt' },
-        part3: { name: 'Phần III: Trả lời ngắn', pointsPerQuestion: 0.5, targetQuestions: 0, enabled: false, description: 'Tắt' },
-        part4: { name: 'Phần IV: Tự luận', pointsPerQuestion: 1.0, targetQuestions: 0, enabled: false, description: 'Tắt' },
-      };
-    }
+  // Preset structure loader from standardized StructurePresets
+  const handleApplyPreset = (presetKey: StructureOption | 'bo_2025' | 'tn_tuluan_70_30' | 'ket_hop_4_phan' | 'tn_100') => {
+    let targetStructure: StructureOption = 'option_1';
+    if (presetKey === 'bo_2025' || presetKey === 'option_1') targetStructure = 'option_1';
+    else if (presetKey === 'tn_tuluan_70_30' || presetKey === 'option_tn_tl_70_30') targetStructure = 'option_tn_tl_70_30';
+    else if (presetKey === 'tn_100' || presetKey === 'option_tn_100') targetStructure = 'option_tn_100';
+    else if (presetKey === 'option_3') targetStructure = 'option_3';
+    else if (presetKey === 'option_tuluan') targetStructure = 'option_tuluan';
+    else if (presetKey === 'option_2') targetStructure = 'option_2';
+
+    const newConfigs = getStructurePartConfigs(targetStructure, partConfigs, header.subject);
 
     if (onChangeHeader) {
       onChangeHeader({
         ...header,
+        structureOption: targetStructure,
         partConfigs: newConfigs
       });
     }
 
-    // Recalculate row points
-    const updated = matrix.map(row => {
-      const p1Score = (row.part1_nb + row.part1_th + row.part1_vd + row.part1_vdc) * newConfigs.part1.pointsPerQuestion;
-      const p2Score = (row.part2_nb + row.part2_th + row.part2_vd + row.part2_vdc) * newConfigs.part2.pointsPerQuestion;
-      const p3Score = (row.part3_nb + row.part3_th + row.part3_vd + row.part3_vdc) * newConfigs.part3.pointsPerQuestion;
-      const p4Score = (row.part4_nb + row.part4_th + row.part4_vd + row.part4_vdc) * newConfigs.part4.pointsPerQuestion;
-      return {
-        ...row,
-        totalPoints: Number((p1Score + p2Score + p3Score + p4Score).toFixed(2))
-      };
-    });
-    onChangeMatrix(updated);
-    setSpecSyncNotification('✨ Đã áp dụng mẫu thang điểm & số câu mục tiêu thành công!');
+    const sanitized = sanitizeMatrixForPartConfigs(matrix, newConfigs);
+    onChangeMatrix(sanitized);
+    setSpecSyncNotification(`✨ Đã áp dụng và khóa các ô ma trận chuẩn theo cấu trúc đã chọn!`);
     setTimeout(() => setSpecSyncNotification(null), 3500);
   };
 
   // Matrix Row update handlers
   const handleUpdateRow = (id: string, field: keyof MatrixRow, value: any) => {
+    // Guard against modifying locked parts
+    if (field.startsWith('part1_') && !isP1Active) return;
+    if (field.startsWith('part2_') && !isP2Active) return;
+    if (field.startsWith('part3_') && !isP3Active) return;
+    if (field.startsWith('part4_') && !isP4Active) return;
+
     const updated = matrix.map(row => {
       if (row.id === id) {
         const newRow = { ...row, [field]: value };
         // Recalculate row points using configurable points per question
-        const p1Score = (newRow.part1_nb + newRow.part1_th + newRow.part1_vd + newRow.part1_vdc) * p1_pts;
-        const p2Score = (newRow.part2_nb + newRow.part2_th + newRow.part2_vd + newRow.part2_vdc) * p2_pts;
-        const p3Score = (newRow.part3_nb + newRow.part3_th + newRow.part3_vd + newRow.part3_vdc) * p3_pts;
-        const p4Score = (newRow.part4_nb + newRow.part4_th + newRow.part4_vd + newRow.part4_vdc) * p4_pts;
+        const p1Score = isP1Active ? (newRow.part1_nb + newRow.part1_th + newRow.part1_vd + newRow.part1_vdc) * p1_pts : 0;
+        const p2Score = isP2Active ? (newRow.part2_nb + newRow.part2_th + newRow.part2_vd + newRow.part2_vdc) * p2_pts : 0;
+        const p3Score = isP3Active ? (newRow.part3_nb + newRow.part3_th + newRow.part3_vd + newRow.part3_vdc) * p3_pts : 0;
+        const p4Score = isP4Active ? (newRow.part4_nb + newRow.part4_th + newRow.part4_vd + newRow.part4_vdc) * p4_pts : 0;
         newRow.totalPoints = Number((p1Score + p2Score + p3Score + p4Score).toFixed(2));
         return newRow;
       }
@@ -215,8 +181,8 @@ export const MatrixStep: React.FC<MatrixStepProps> = ({
       id: 'row-' + Date.now(),
       topic: 'Chủ đề mới',
       unit: 'Đơn vị kiến thức mới',
-      part1_nb: 1,
-      part1_th: 1,
+      part1_nb: isP1Active ? 1 : 0,
+      part1_th: isP1Active ? 1 : 0,
       part1_vd: 0,
       part1_vdc: 0,
       part2_nb: 0,
@@ -227,12 +193,17 @@ export const MatrixStep: React.FC<MatrixStepProps> = ({
       part3_th: 0,
       part3_vd: 0,
       part3_vdc: 0,
-      part4_nb: 0,
-      part4_th: 0,
+      part4_nb: (!isP1Active && !isP2Active && !isP3Active && isP4Active) ? 1 : 0,
+      part4_th: (!isP1Active && !isP2Active && !isP3Active && isP4Active) ? 1 : 0,
       part4_vd: 0,
       part4_vdc: 0,
-      totalPoints: 0.5,
+      totalPoints: 0,
     };
+    const p1Score = isP1Active ? (newRow.part1_nb + newRow.part1_th + newRow.part1_vd + newRow.part1_vdc) * p1_pts : 0;
+    const p2Score = isP2Active ? (newRow.part2_nb + newRow.part2_th + newRow.part2_vd + newRow.part2_vdc) * p2_pts : 0;
+    const p3Score = isP3Active ? (newRow.part3_nb + newRow.part3_th + newRow.part3_vd + newRow.part3_vdc) * p3_pts : 0;
+    const p4Score = isP4Active ? (newRow.part4_nb + newRow.part4_th + newRow.part4_vd + newRow.part4_vdc) * p4_pts : 0;
+    newRow.totalPoints = Number((p1Score + p2Score + p3Score + p4Score).toFixed(2));
     onChangeMatrix([...matrix, newRow]);
   };
 
@@ -598,7 +569,7 @@ export const MatrixStep: React.FC<MatrixStepProps> = ({
 
             {/* Quick Structure Preset Buttons */}
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mr-1">Mẫu nhanh:</span>
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mr-1">Mẫu cấu trúc:</span>
               <button
                 onClick={() => handleApplyPreset('bo_2025')}
                 className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-bold border border-indigo-200 transition-colors"
@@ -614,18 +585,25 @@ export const MatrixStep: React.FC<MatrixStepProps> = ({
                 ⚡ 70% TN + 30% TL
               </button>
               <button
+                onClick={() => handleApplyPreset('option_tuluan')}
+                className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-lg text-xs font-bold border border-amber-300 transition-colors"
+                title="100% Tự luận (Ngữ văn, Lịch sử... - Tự động khóa toàn bộ Trắc nghiệm)"
+              >
+                ✍️ 100% Tự Luận (Văn...)
+              </button>
+              <button
+                onClick={() => handleApplyPreset('option_3')}
+                className="px-2.5 py-1 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg text-xs font-bold border border-purple-200 transition-colors"
+                title="100% Trắc nghiệm (Tự động khóa Tự luận)"
+              >
+                ⚡ 100% Trắc nghiệm (Khóa TL)
+              </button>
+              <button
                 onClick={() => handleApplyPreset('ket_hop_4_phan')}
                 className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-xs font-bold border border-emerald-200 transition-colors"
                 title="16 câu TN + 2 câu Đ/S + 4 câu TLN + 2 câu TL"
               >
                 ⚡ Kết hợp 4 phần
-              </button>
-              <button
-                onClick={() => handleApplyPreset('tn_100')}
-                className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold border border-slate-300 transition-colors"
-                title="40 câu trắc nghiệm 4 lựa chọn (10 điểm)"
-              >
-                ⚡ 100% Trắc nghiệm (40 câu)
               </button>
             </div>
           </div>
@@ -1160,362 +1138,418 @@ export const MatrixStep: React.FC<MatrixStepProps> = ({
                   <th rowSpan={2} className="p-2.5 border-r border-slate-200 min-w-[200px]">Nội dung / Đơn vị kiến thức</th>
                   
                   {/* Part 1 Header with Inline Config */}
-                  <th colSpan={4} className="p-2 bg-indigo-50/90 border-r border-slate-200">
+                  <th colSpan={4} className={`p-2 border-r border-slate-200 ${isP1Active ? 'bg-indigo-50/90' : 'bg-slate-200/70'}`}>
                     <div className="flex flex-col gap-1.5 text-left">
                       <div className="flex items-center justify-between gap-1">
-                        <span className="font-extrabold text-indigo-950 text-xs truncate" title={partConfigs.part1?.name}>
+                        <span className={`font-extrabold text-xs truncate ${isP1Active ? 'text-indigo-950' : 'text-slate-600'}`} title={partConfigs.part1?.name}>
                           {partConfigs.part1?.name || 'Phần I'}
                         </span>
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-bold shrink-0 ${
-                          totalP1 === p1_target 
-                            ? 'bg-emerald-100 text-emerald-800' 
-                            : totalP1 < p1_target 
-                              ? 'bg-amber-100 text-amber-800' 
-                              : 'bg-rose-100 text-rose-800'
-                        }`}>
-                          {totalP1}/{p1_target} câu
-                        </span>
+                        {isP1Active ? (
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-bold shrink-0 ${
+                            totalP1 === p1_target 
+                              ? 'bg-emerald-100 text-emerald-800' 
+                              : totalP1 < p1_target 
+                                ? 'bg-amber-100 text-amber-800' 
+                                : 'bg-rose-100 text-rose-800'
+                          }`}>
+                            {totalP1}/{p1_target} câu
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-300/80 text-slate-700 text-[10px] font-bold shrink-0">
+                            <Lock className="w-2.5 h-2.5 text-slate-500" /> ĐÃ KHÓA
+                          </span>
+                        )}
                       </div>
                       
-                      <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] bg-white/95 p-1 rounded-lg border border-indigo-100 shadow-2xs">
-                        {/* Điểm/câu */}
-                        <div className="flex items-center gap-1">
-                          <span className="text-slate-500 font-medium text-[10px]">Điểm:</span>
-                          <div className="flex items-center border border-indigo-200 rounded bg-white overflow-hidden shadow-2xs">
-                            <button
-                              type="button"
-                              onClick={() => handleAdjustPoints('part1', -0.05)}
-                              className="w-4 h-5 flex items-center justify-center bg-slate-50 hover:bg-indigo-100 text-slate-600 hover:text-indigo-700 transition-colors"
-                              title="Giảm 0.05 điểm"
-                            >
-                              <Minus className="w-2.5 h-2.5" />
-                            </button>
-                            <input
-                              type="text"
-                              inputMode="decimal"
-                              value={p1_pts}
-                              onChange={(e) => handleUpdatePartConfig('part1', 'pointsPerQuestion', e.target.value)}
-                              className="w-8 text-center font-extrabold text-indigo-700 bg-transparent focus:outline-hidden text-[11px]"
-                              title="Số điểm mỗi câu Phần I"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => handleAdjustPoints('part1', 0.05)}
-                              className="w-4 h-5 flex items-center justify-center bg-slate-50 hover:bg-indigo-100 text-slate-600 hover:text-indigo-700 transition-colors"
-                              title="Tăng 0.05 điểm"
-                            >
-                              <Plus className="w-2.5 h-2.5" />
-                            </button>
-                          </div>
-                          <span className="text-indigo-900 font-bold text-[10px]">đ</span>
-                        </div>
+                      {isP1Active ? (
+                        <>
+                          <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] bg-white/95 p-1 rounded-lg border border-indigo-100 shadow-2xs">
+                            {/* Điểm/câu */}
+                            <div className="flex items-center gap-1">
+                              <span className="text-slate-500 font-medium text-[10px]">Điểm:</span>
+                              <div className="flex items-center border border-indigo-200 rounded bg-white overflow-hidden shadow-2xs">
+                                <button
+                                  type="button"
+                                  onClick={() => handleAdjustPoints('part1', -0.05)}
+                                  className="w-4 h-5 flex items-center justify-center bg-slate-50 hover:bg-indigo-100 text-slate-600 hover:text-indigo-700 transition-colors"
+                                  title="Giảm 0.05 điểm"
+                                >
+                                  <Minus className="w-2.5 h-2.5" />
+                                </button>
+                                <input
+                                  type="text"
+                                  inputMode="decimal"
+                                  value={p1_pts}
+                                  onChange={(e) => handleUpdatePartConfig('part1', 'pointsPerQuestion', e.target.value)}
+                                  className="w-8 text-center font-extrabold text-indigo-700 bg-transparent focus:outline-hidden text-[11px]"
+                                  title="Số điểm mỗi câu Phần I"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleAdjustPoints('part1', 0.05)}
+                                  className="w-4 h-5 flex items-center justify-center bg-slate-50 hover:bg-indigo-100 text-slate-600 hover:text-indigo-700 transition-colors"
+                                  title="Tăng 0.05 điểm"
+                                >
+                                  <Plus className="w-2.5 h-2.5" />
+                                </button>
+                              </div>
+                              <span className="text-indigo-900 font-bold text-[10px]">đ</span>
+                            </div>
 
-                        {/* Số câu */}
-                        <div className="flex items-center gap-1">
-                          <span className="text-slate-500 font-medium text-[10px]">Số câu:</span>
-                          <div className="flex items-center border border-indigo-200 rounded bg-white overflow-hidden shadow-2xs">
-                            <button
-                              type="button"
-                              onClick={() => handleAdjustQuestions('part1', -1)}
-                              className="w-4 h-5 flex items-center justify-center bg-slate-50 hover:bg-indigo-100 text-slate-600 hover:text-indigo-700 transition-colors"
-                              title="Giảm 1 câu"
-                            >
-                              <Minus className="w-2.5 h-2.5" />
-                            </button>
-                            <input
-                              type="text"
-                              inputMode="numeric"
-                              value={p1_target}
-                              onChange={(e) => handleUpdatePartConfig('part1', 'targetQuestions', e.target.value)}
-                              className="w-7 text-center font-bold text-slate-800 bg-transparent focus:outline-hidden text-[11px]"
-                              title="Số câu mục tiêu Phần I"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => handleAdjustQuestions('part1', 1)}
-                              className="w-4 h-5 flex items-center justify-center bg-slate-50 hover:bg-indigo-100 text-slate-600 hover:text-indigo-700 transition-colors"
-                              title="Tăng 1 câu"
-                            >
-                              <Plus className="w-2.5 h-2.5" />
-                            </button>
+                            {/* Số câu */}
+                            <div className="flex items-center gap-1">
+                              <span className="text-slate-500 font-medium text-[10px]">Số câu:</span>
+                              <div className="flex items-center border border-indigo-200 rounded bg-white overflow-hidden shadow-2xs">
+                                <button
+                                  type="button"
+                                  onClick={() => handleAdjustQuestions('part1', -1)}
+                                  className="w-4 h-5 flex items-center justify-center bg-slate-50 hover:bg-indigo-100 text-slate-600 hover:text-indigo-700 transition-colors"
+                                  title="Giảm 1 câu"
+                                >
+                                  <Minus className="w-2.5 h-2.5" />
+                                </button>
+                                <input
+                                  type="text"
+                                  inputMode="numeric"
+                                  value={p1_target}
+                                  onChange={(e) => handleUpdatePartConfig('part1', 'targetQuestions', e.target.value)}
+                                  className="w-7 text-center font-bold text-slate-800 bg-transparent focus:outline-hidden text-[11px]"
+                                  title="Số câu mục tiêu Phần I"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleAdjustQuestions('part1', 1)}
+                                  className="w-4 h-5 flex items-center justify-center bg-slate-50 hover:bg-indigo-100 text-slate-600 hover:text-indigo-700 transition-colors"
+                                  title="Tăng 1 câu"
+                                >
+                                  <Plus className="w-2.5 h-2.5" />
+                                </button>
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      </div>
 
-                      <div className="flex items-center justify-between text-[10px] text-indigo-900 font-semibold px-0.5">
-                        <span>Tổng điểm: <strong className="text-indigo-700 font-bold">{totalPointsP1.toFixed(2)}đ</strong></span>
-                        <span className="text-slate-500">(MT: {(p1_target * p1_pts).toFixed(2)}đ)</span>
-                      </div>
+                          <div className="flex items-center justify-between text-[10px] text-indigo-900 font-semibold px-0.5">
+                            <span>Tổng điểm: <strong className="text-indigo-700 font-bold">{totalPointsP1.toFixed(2)}đ</strong></span>
+                            <span className="text-slate-500">(MT: {(p1_target * p1_pts).toFixed(2)}đ)</span>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="py-1 text-[11px] text-slate-500 font-medium italic flex items-center gap-1">
+                          <span>0 câu hỏi • 0.00đ</span>
+                        </div>
+                      )}
                     </div>
                   </th>
 
                   {/* Part 2 Header with Inline Config */}
-                  <th colSpan={4} className="p-2 bg-blue-50/90 border-r border-slate-200">
+                  <th colSpan={4} className={`p-2 border-r border-slate-200 ${isP2Active ? 'bg-blue-50/90' : 'bg-slate-200/70'}`}>
                     <div className="flex flex-col gap-1.5 text-left">
                       <div className="flex items-center justify-between gap-1">
-                        <span className="font-extrabold text-blue-950 text-xs truncate" title={partConfigs.part2?.name}>
+                        <span className={`font-extrabold text-xs truncate ${isP2Active ? 'text-blue-950' : 'text-slate-600'}`} title={partConfigs.part2?.name}>
                           {partConfigs.part2?.name || 'Phần II'}
                         </span>
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-bold shrink-0 ${
-                          totalP2 === p2_target 
-                            ? 'bg-emerald-100 text-emerald-800' 
-                            : totalP2 < p2_target 
-                              ? 'bg-amber-100 text-amber-800' 
-                              : 'bg-rose-100 text-rose-800'
-                        }`}>
-                          {totalP2}/{p2_target} câu
-                        </span>
+                        {isP2Active ? (
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-bold shrink-0 ${
+                            totalP2 === p2_target 
+                              ? 'bg-emerald-100 text-emerald-800' 
+                              : totalP2 < p2_target 
+                                ? 'bg-amber-100 text-amber-800' 
+                                : 'bg-rose-100 text-rose-800'
+                          }`}>
+                            {totalP2}/{p2_target} câu
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-300/80 text-slate-700 text-[10px] font-bold shrink-0">
+                            <Lock className="w-2.5 h-2.5 text-slate-500" /> ĐÃ KHÓA
+                          </span>
+                        )}
                       </div>
                       
-                      <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] bg-white/95 p-1 rounded-lg border border-blue-100 shadow-2xs">
-                        {/* Điểm/câu */}
-                        <div className="flex items-center gap-1">
-                          <span className="text-slate-500 font-medium text-[10px]">Điểm:</span>
-                          <div className="flex items-center border border-blue-200 rounded bg-white overflow-hidden shadow-2xs">
-                            <button
-                              type="button"
-                              onClick={() => handleAdjustPoints('part2', -0.25)}
-                              className="w-4 h-5 flex items-center justify-center bg-slate-50 hover:bg-blue-100 text-slate-600 hover:text-blue-700 transition-colors"
-                              title="Giảm 0.25 điểm"
-                            >
-                              <Minus className="w-2.5 h-2.5" />
-                            </button>
-                            <input
-                              type="text"
-                              inputMode="decimal"
-                              value={p2_pts}
-                              onChange={(e) => handleUpdatePartConfig('part2', 'pointsPerQuestion', e.target.value)}
-                              className="w-8 text-center font-extrabold text-blue-700 bg-transparent focus:outline-hidden text-[11px]"
-                              title="Số điểm mỗi câu Phần II"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => handleAdjustPoints('part2', 0.25)}
-                              className="w-4 h-5 flex items-center justify-center bg-slate-50 hover:bg-blue-100 text-slate-600 hover:text-blue-700 transition-colors"
-                              title="Tăng 0.25 điểm"
-                            >
-                              <Plus className="w-2.5 h-2.5" />
-                            </button>
-                          </div>
-                          <span className="text-blue-900 font-bold text-[10px]">đ</span>
-                        </div>
+                      {isP2Active ? (
+                        <>
+                          <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] bg-white/95 p-1 rounded-lg border border-blue-100 shadow-2xs">
+                            {/* Điểm/câu */}
+                            <div className="flex items-center gap-1">
+                              <span className="text-slate-500 font-medium text-[10px]">Điểm:</span>
+                              <div className="flex items-center border border-blue-200 rounded bg-white overflow-hidden shadow-2xs">
+                                <button
+                                  type="button"
+                                  onClick={() => handleAdjustPoints('part2', -0.25)}
+                                  className="w-4 h-5 flex items-center justify-center bg-slate-50 hover:bg-blue-100 text-slate-600 hover:text-blue-700 transition-colors"
+                                  title="Giảm 0.25 điểm"
+                                >
+                                  <Minus className="w-2.5 h-2.5" />
+                                </button>
+                                <input
+                                  type="text"
+                                  inputMode="decimal"
+                                  value={p2_pts}
+                                  onChange={(e) => handleUpdatePartConfig('part2', 'pointsPerQuestion', e.target.value)}
+                                  className="w-8 text-center font-extrabold text-blue-700 bg-transparent focus:outline-hidden text-[11px]"
+                                  title="Số điểm mỗi câu Phần II"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleAdjustPoints('part2', 0.25)}
+                                  className="w-4 h-5 flex items-center justify-center bg-slate-50 hover:bg-blue-100 text-slate-600 hover:text-blue-700 transition-colors"
+                                  title="Tăng 0.25 điểm"
+                                >
+                                  <Plus className="w-2.5 h-2.5" />
+                                </button>
+                              </div>
+                              <span className="text-blue-900 font-bold text-[10px]">đ</span>
+                            </div>
 
-                        {/* Số câu */}
-                        <div className="flex items-center gap-1">
-                          <span className="text-slate-500 font-medium text-[10px]">Số câu:</span>
-                          <div className="flex items-center border border-blue-200 rounded bg-white overflow-hidden shadow-2xs">
-                            <button
-                              type="button"
-                              onClick={() => handleAdjustQuestions('part2', -1)}
-                              className="w-4 h-5 flex items-center justify-center bg-slate-50 hover:bg-blue-100 text-slate-600 hover:text-blue-700 transition-colors"
-                              title="Giảm 1 câu"
-                            >
-                              <Minus className="w-2.5 h-2.5" />
-                            </button>
-                            <input
-                              type="text"
-                              inputMode="numeric"
-                              value={p2_target}
-                              onChange={(e) => handleUpdatePartConfig('part2', 'targetQuestions', e.target.value)}
-                              className="w-7 text-center font-bold text-slate-800 bg-transparent focus:outline-hidden text-[11px]"
-                              title="Số câu mục tiêu Phần II"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => handleAdjustQuestions('part2', 1)}
-                              className="w-4 h-5 flex items-center justify-center bg-slate-50 hover:bg-blue-100 text-slate-600 hover:text-blue-700 transition-colors"
-                              title="Tăng 1 câu"
-                            >
-                              <Plus className="w-2.5 h-2.5" />
-                            </button>
+                            {/* Số câu */}
+                            <div className="flex items-center gap-1">
+                              <span className="text-slate-500 font-medium text-[10px]">Số câu:</span>
+                              <div className="flex items-center border border-blue-200 rounded bg-white overflow-hidden shadow-2xs">
+                                <button
+                                  type="button"
+                                  onClick={() => handleAdjustQuestions('part2', -1)}
+                                  className="w-4 h-5 flex items-center justify-center bg-slate-50 hover:bg-blue-100 text-slate-600 hover:text-blue-700 transition-colors"
+                                  title="Giảm 1 câu"
+                                >
+                                  <Minus className="w-2.5 h-2.5" />
+                                </button>
+                                <input
+                                  type="text"
+                                  inputMode="numeric"
+                                  value={p2_target}
+                                  onChange={(e) => handleUpdatePartConfig('part2', 'targetQuestions', e.target.value)}
+                                  className="w-7 text-center font-bold text-slate-800 bg-transparent focus:outline-hidden text-[11px]"
+                                  title="Số câu mục tiêu Phần II"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleAdjustQuestions('part2', 1)}
+                                  className="w-4 h-5 flex items-center justify-center bg-slate-50 hover:bg-blue-100 text-slate-600 hover:text-blue-700 transition-colors"
+                                  title="Tăng 1 câu"
+                                >
+                                  <Plus className="w-2.5 h-2.5" />
+                                </button>
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      </div>
 
-                      <div className="flex items-center justify-between text-[10px] text-blue-900 font-semibold px-0.5">
-                        <span>Tổng điểm: <strong className="text-blue-700 font-bold">{totalPointsP2.toFixed(2)}đ</strong></span>
-                        <span className="text-slate-500">(MT: {(p2_target * p2_pts).toFixed(2)}đ)</span>
-                      </div>
+                          <div className="flex items-center justify-between text-[10px] text-blue-900 font-semibold px-0.5">
+                            <span>Tổng điểm: <strong className="text-blue-700 font-bold">{totalPointsP2.toFixed(2)}đ</strong></span>
+                            <span className="text-slate-500">(MT: {(p2_target * p2_pts).toFixed(2)}đ)</span>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="py-1 text-[11px] text-slate-500 font-medium italic flex items-center gap-1">
+                          <span>0 câu hỏi • 0.00đ</span>
+                        </div>
+                      )}
                     </div>
                   </th>
 
                   {/* Part 3 Header with Inline Config */}
-                  <th colSpan={4} className="p-2 bg-emerald-50/90 border-r border-slate-200">
+                  <th colSpan={4} className={`p-2 border-r border-slate-200 ${isP3Active ? 'bg-emerald-50/90' : 'bg-slate-200/70'}`}>
                     <div className="flex flex-col gap-1.5 text-left">
                       <div className="flex items-center justify-between gap-1">
-                        <span className="font-extrabold text-emerald-950 text-xs truncate" title={partConfigs.part3?.name}>
+                        <span className={`font-extrabold text-xs truncate ${isP3Active ? 'text-emerald-950' : 'text-slate-600'}`} title={partConfigs.part3?.name}>
                           {partConfigs.part3?.name || 'Phần III'}
                         </span>
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-bold shrink-0 ${
-                          totalP3 === p3_target 
-                            ? 'bg-emerald-100 text-emerald-800' 
-                            : totalP3 < p3_target 
-                              ? 'bg-amber-100 text-amber-800' 
-                              : 'bg-rose-100 text-rose-800'
-                        }`}>
-                          {totalP3}/{p3_target} câu
-                        </span>
+                        {isP3Active ? (
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-bold shrink-0 ${
+                            totalP3 === p3_target 
+                              ? 'bg-emerald-100 text-emerald-800' 
+                              : totalP3 < p3_target 
+                                ? 'bg-amber-100 text-amber-800' 
+                                : 'bg-rose-100 text-rose-800'
+                          }`}>
+                            {totalP3}/{p3_target} câu
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-300/80 text-slate-700 text-[10px] font-bold shrink-0">
+                            <Lock className="w-2.5 h-2.5 text-slate-500" /> ĐÃ KHÓA
+                          </span>
+                        )}
                       </div>
                       
-                      <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] bg-white/95 p-1 rounded-lg border border-emerald-100 shadow-2xs">
-                        {/* Điểm/câu */}
-                        <div className="flex items-center gap-1">
-                          <span className="text-slate-500 font-medium text-[10px]">Điểm:</span>
-                          <div className="flex items-center border border-emerald-200 rounded bg-white overflow-hidden shadow-2xs">
-                            <button
-                              type="button"
-                              onClick={() => handleAdjustPoints('part3', -0.1)}
-                              className="w-4 h-5 flex items-center justify-center bg-slate-50 hover:bg-emerald-100 text-slate-600 hover:text-emerald-700 transition-colors"
-                              title="Giảm 0.1 điểm"
-                            >
-                              <Minus className="w-2.5 h-2.5" />
-                            </button>
-                            <input
-                              type="text"
-                              inputMode="decimal"
-                              value={p3_pts}
-                              onChange={(e) => handleUpdatePartConfig('part3', 'pointsPerQuestion', e.target.value)}
-                              className="w-8 text-center font-extrabold text-emerald-700 bg-transparent focus:outline-hidden text-[11px]"
-                              title="Số điểm mỗi câu Phần III"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => handleAdjustPoints('part3', 0.1)}
-                              className="w-4 h-5 flex items-center justify-center bg-slate-50 hover:bg-emerald-100 text-slate-600 hover:text-emerald-700 transition-colors"
-                              title="Tăng 0.1 điểm"
-                            >
-                              <Plus className="w-2.5 h-2.5" />
-                            </button>
-                          </div>
-                          <span className="text-emerald-900 font-bold text-[10px]">đ</span>
-                        </div>
+                      {isP3Active ? (
+                        <>
+                          <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] bg-white/95 p-1 rounded-lg border border-emerald-100 shadow-2xs">
+                            {/* Điểm/câu */}
+                            <div className="flex items-center gap-1">
+                              <span className="text-slate-500 font-medium text-[10px]">Điểm:</span>
+                              <div className="flex items-center border border-emerald-200 rounded bg-white overflow-hidden shadow-2xs">
+                                <button
+                                  type="button"
+                                  onClick={() => handleAdjustPoints('part3', -0.1)}
+                                  className="w-4 h-5 flex items-center justify-center bg-slate-50 hover:bg-emerald-100 text-slate-600 hover:text-emerald-700 transition-colors"
+                                  title="Giảm 0.1 điểm"
+                                >
+                                  <Minus className="w-2.5 h-2.5" />
+                                </button>
+                                <input
+                                  type="text"
+                                  inputMode="decimal"
+                                  value={p3_pts}
+                                  onChange={(e) => handleUpdatePartConfig('part3', 'pointsPerQuestion', e.target.value)}
+                                  className="w-8 text-center font-extrabold text-emerald-700 bg-transparent focus:outline-hidden text-[11px]"
+                                  title="Số điểm mỗi câu Phần III"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleAdjustPoints('part3', 0.1)}
+                                  className="w-4 h-5 flex items-center justify-center bg-slate-50 hover:bg-emerald-100 text-slate-600 hover:text-emerald-700 transition-colors"
+                                  title="Tăng 0.1 điểm"
+                                >
+                                  <Plus className="w-2.5 h-2.5" />
+                                </button>
+                              </div>
+                              <span className="text-emerald-900 font-bold text-[10px]">đ</span>
+                            </div>
 
-                        {/* Số câu */}
-                        <div className="flex items-center gap-1">
-                          <span className="text-slate-500 font-medium text-[10px]">Số câu:</span>
-                          <div className="flex items-center border border-emerald-200 rounded bg-white overflow-hidden shadow-2xs">
-                            <button
-                              type="button"
-                              onClick={() => handleAdjustQuestions('part3', -1)}
-                              className="w-4 h-5 flex items-center justify-center bg-slate-50 hover:bg-emerald-100 text-slate-600 hover:text-emerald-700 transition-colors"
-                              title="Giảm 1 câu"
-                            >
-                              <Minus className="w-2.5 h-2.5" />
-                            </button>
-                            <input
-                              type="text"
-                              inputMode="numeric"
-                              value={p3_target}
-                              onChange={(e) => handleUpdatePartConfig('part3', 'targetQuestions', e.target.value)}
-                              className="w-7 text-center font-bold text-slate-800 bg-transparent focus:outline-hidden text-[11px]"
-                              title="Số câu mục tiêu Phần III"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => handleAdjustQuestions('part3', 1)}
-                              className="w-4 h-5 flex items-center justify-center bg-slate-50 hover:bg-emerald-100 text-slate-600 hover:text-emerald-700 transition-colors"
-                              title="Tăng 1 câu"
-                            >
-                              <Plus className="w-2.5 h-2.5" />
-                            </button>
+                            {/* Số câu */}
+                            <div className="flex items-center gap-1">
+                              <span className="text-slate-500 font-medium text-[10px]">Số câu:</span>
+                              <div className="flex items-center border border-emerald-200 rounded bg-white overflow-hidden shadow-2xs">
+                                <button
+                                  type="button"
+                                  onClick={() => handleAdjustQuestions('part3', -1)}
+                                  className="w-4 h-5 flex items-center justify-center bg-slate-50 hover:bg-emerald-100 text-slate-600 hover:text-emerald-700 transition-colors"
+                                  title="Giảm 1 câu"
+                                >
+                                  <Minus className="w-2.5 h-2.5" />
+                                </button>
+                                <input
+                                  type="text"
+                                  inputMode="numeric"
+                                  value={p3_target}
+                                  onChange={(e) => handleUpdatePartConfig('part3', 'targetQuestions', e.target.value)}
+                                  className="w-7 text-center font-bold text-slate-800 bg-transparent focus:outline-hidden text-[11px]"
+                                  title="Số câu mục tiêu Phần III"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleAdjustQuestions('part3', 1)}
+                                  className="w-4 h-5 flex items-center justify-center bg-slate-50 hover:bg-emerald-100 text-slate-600 hover:text-emerald-700 transition-colors"
+                                  title="Tăng 1 câu"
+                                >
+                                  <Plus className="w-2.5 h-2.5" />
+                                </button>
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      </div>
 
-                      <div className="flex items-center justify-between text-[10px] text-emerald-900 font-semibold px-0.5">
-                        <span>Tổng điểm: <strong className="text-emerald-700 font-bold">{totalPointsP3.toFixed(2)}đ</strong></span>
-                        <span className="text-slate-500">(MT: {(p3_target * p3_pts).toFixed(2)}đ)</span>
-                      </div>
+                          <div className="flex items-center justify-between text-[10px] text-emerald-900 font-semibold px-0.5">
+                            <span>Tổng điểm: <strong className="text-emerald-700 font-bold">{totalPointsP3.toFixed(2)}đ</strong></span>
+                            <span className="text-slate-500">(MT: {(p3_target * p3_pts).toFixed(2)}đ)</span>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="py-1 text-[11px] text-slate-500 font-medium italic flex items-center gap-1">
+                          <span>0 câu hỏi • 0.00đ</span>
+                        </div>
+                      )}
                     </div>
                   </th>
 
                   {/* Part 4 Header with Inline Config */}
-                  <th colSpan={4} className="p-2 bg-amber-50/90 border-r border-slate-200">
+                  <th colSpan={4} className={`p-2 border-r border-slate-200 ${isP4Active ? 'bg-amber-50/90' : 'bg-slate-200/70'}`}>
                     <div className="flex flex-col gap-1.5 text-left">
                       <div className="flex items-center justify-between gap-1">
-                        <span className="font-extrabold text-amber-950 text-xs truncate" title={partConfigs.part4?.name}>
+                        <span className={`font-extrabold text-xs truncate ${isP4Active ? 'text-amber-950' : 'text-slate-600'}`} title={partConfigs.part4?.name}>
                           {partConfigs.part4?.name || 'Phần IV (Tự luận)'}
                         </span>
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-bold shrink-0 ${
-                          totalP4 === p4_target 
-                            ? 'bg-emerald-100 text-emerald-800' 
-                            : totalP4 < p4_target 
-                              ? 'bg-amber-100 text-amber-800' 
-                              : 'bg-rose-100 text-rose-800'
-                        }`}>
-                          {totalP4}/{p4_target} câu
-                        </span>
+                        {isP4Active ? (
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-bold shrink-0 ${
+                            totalP4 === p4_target 
+                              ? 'bg-emerald-100 text-emerald-800' 
+                              : totalP4 < p4_target 
+                                ? 'bg-amber-100 text-amber-800' 
+                                : 'bg-rose-100 text-rose-800'
+                          }`}>
+                            {totalP4}/{p4_target} câu
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-300/80 text-slate-700 text-[10px] font-bold shrink-0">
+                            <Lock className="w-2.5 h-2.5 text-slate-500" /> ĐÃ KHÓA
+                          </span>
+                        )}
                       </div>
                       
-                      <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] bg-white/95 p-1 rounded-lg border border-amber-100 shadow-2xs">
-                        {/* Điểm/câu */}
-                        <div className="flex items-center gap-1">
-                          <span className="text-slate-500 font-medium text-[10px]">Điểm:</span>
-                          <div className="flex items-center border border-amber-200 rounded bg-white overflow-hidden shadow-2xs">
-                            <button
-                              type="button"
-                              onClick={() => handleAdjustPoints('part4', -0.25)}
-                              className="w-4 h-5 flex items-center justify-center bg-slate-50 hover:bg-amber-100 text-slate-600 hover:text-amber-700 transition-colors"
-                              title="Giảm 0.25 điểm"
-                            >
-                              <Minus className="w-2.5 h-2.5" />
-                            </button>
-                            <input
-                              type="text"
-                              inputMode="decimal"
-                              value={p4_pts}
-                              onChange={(e) => handleUpdatePartConfig('part4', 'pointsPerQuestion', e.target.value)}
-                              className="w-8 text-center font-extrabold text-amber-700 bg-transparent focus:outline-hidden text-[11px]"
-                              title="Số điểm mỗi câu Phần IV"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => handleAdjustPoints('part4', 0.25)}
-                              className="w-4 h-5 flex items-center justify-center bg-slate-50 hover:bg-amber-100 text-slate-600 hover:text-amber-700 transition-colors"
-                              title="Tăng 0.25 điểm"
-                            >
-                              <Plus className="w-2.5 h-2.5" />
-                            </button>
-                          </div>
-                          <span className="text-amber-900 font-bold text-[10px]">đ</span>
-                        </div>
+                      {isP4Active ? (
+                        <>
+                          <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] bg-white/95 p-1 rounded-lg border border-amber-100 shadow-2xs">
+                            {/* Điểm/câu */}
+                            <div className="flex items-center gap-1">
+                              <span className="text-slate-500 font-medium text-[10px]">Điểm:</span>
+                              <div className="flex items-center border border-amber-200 rounded bg-white overflow-hidden shadow-2xs">
+                                <button
+                                  type="button"
+                                  onClick={() => handleAdjustPoints('part4', -0.25)}
+                                  className="w-4 h-5 flex items-center justify-center bg-slate-50 hover:bg-amber-100 text-slate-600 hover:text-amber-700 transition-colors"
+                                  title="Giảm 0.25 điểm"
+                                >
+                                  <Minus className="w-2.5 h-2.5" />
+                                </button>
+                                <input
+                                  type="text"
+                                  inputMode="decimal"
+                                  value={p4_pts}
+                                  onChange={(e) => handleUpdatePartConfig('part4', 'pointsPerQuestion', e.target.value)}
+                                  className="w-8 text-center font-extrabold text-amber-700 bg-transparent focus:outline-hidden text-[11px]"
+                                  title="Số điểm mỗi câu Phần IV"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleAdjustPoints('part4', 0.25)}
+                                  className="w-4 h-5 flex items-center justify-center bg-slate-50 hover:bg-amber-100 text-slate-600 hover:text-amber-700 transition-colors"
+                                  title="Tăng 0.25 điểm"
+                                >
+                                  <Plus className="w-2.5 h-2.5" />
+                                </button>
+                              </div>
+                              <span className="text-amber-900 font-bold text-[10px]">đ</span>
+                            </div>
 
-                        {/* Số câu */}
-                        <div className="flex items-center gap-1">
-                          <span className="text-slate-500 font-medium text-[10px]">Số câu:</span>
-                          <div className="flex items-center border border-amber-200 rounded bg-white overflow-hidden shadow-2xs">
-                            <button
-                              type="button"
-                              onClick={() => handleAdjustQuestions('part4', -1)}
-                              className="w-4 h-5 flex items-center justify-center bg-slate-50 hover:bg-amber-100 text-slate-600 hover:text-amber-700 transition-colors"
-                              title="Giảm 1 câu"
-                            >
-                              <Minus className="w-2.5 h-2.5" />
-                            </button>
-                            <input
-                              type="text"
-                              inputMode="numeric"
-                              value={p4_target}
-                              onChange={(e) => handleUpdatePartConfig('part4', 'targetQuestions', e.target.value)}
-                              className="w-7 text-center font-bold text-slate-800 bg-transparent focus:outline-hidden text-[11px]"
-                              title="Số câu mục tiêu Phần IV"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => handleAdjustQuestions('part4', 1)}
-                              className="w-4 h-5 flex items-center justify-center bg-slate-50 hover:bg-amber-100 text-slate-600 hover:text-amber-700 transition-colors"
-                              title="Tăng 1 câu"
-                            >
-                              <Plus className="w-2.5 h-2.5" />
-                            </button>
+                            {/* Số câu */}
+                            <div className="flex items-center gap-1">
+                              <span className="text-slate-500 font-medium text-[10px]">Số câu:</span>
+                              <div className="flex items-center border border-amber-200 rounded bg-white overflow-hidden shadow-2xs">
+                                <button
+                                  type="button"
+                                  onClick={() => handleAdjustQuestions('part4', -1)}
+                                  className="w-4 h-5 flex items-center justify-center bg-slate-50 hover:bg-amber-100 text-slate-600 hover:text-amber-700 transition-colors"
+                                  title="Giảm 1 câu"
+                                >
+                                  <Minus className="w-2.5 h-2.5" />
+                                </button>
+                                <input
+                                  type="text"
+                                  inputMode="numeric"
+                                  value={p4_target}
+                                  onChange={(e) => handleUpdatePartConfig('part4', 'targetQuestions', e.target.value)}
+                                  className="w-7 text-center font-bold text-slate-800 bg-transparent focus:outline-hidden text-[11px]"
+                                  title="Số câu mục tiêu Phần IV"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleAdjustQuestions('part4', 1)}
+                                  className="w-4 h-5 flex items-center justify-center bg-slate-50 hover:bg-amber-100 text-slate-600 hover:text-amber-700 transition-colors"
+                                  title="Tăng 1 câu"
+                                >
+                                  <Plus className="w-2.5 h-2.5" />
+                                </button>
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      </div>
 
-                      <div className="flex items-center justify-between text-[10px] text-amber-900 font-semibold px-0.5">
-                        <span>Tổng điểm: <strong className="text-amber-700 font-bold">{totalPointsP4.toFixed(2)}đ</strong></span>
-                        <span className="text-slate-500">(MT: {(p4_target * p4_pts).toFixed(2)}đ)</span>
-                      </div>
+                          <div className="flex items-center justify-between text-[10px] text-amber-900 font-semibold px-0.5">
+                            <span>Tổng điểm: <strong className="text-amber-700 font-bold">{totalPointsP4.toFixed(2)}đ</strong></span>
+                            <span className="text-slate-500">(MT: {(p4_target * p4_pts).toFixed(2)}đ)</span>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="py-1 text-[11px] text-slate-500 font-medium italic flex items-center gap-1">
+                          <span>0 câu hỏi • 0.00đ</span>
+                        </div>
+                      )}
                     </div>
                   </th>
 
@@ -1525,25 +1559,25 @@ export const MatrixStep: React.FC<MatrixStepProps> = ({
                 </tr>
                 <tr className="bg-slate-50 text-[11px] text-slate-600 font-semibold border-b border-slate-200">
                   {/* Part 1 */}
-                  <th className="p-1 text-center border-r border-slate-200 bg-indigo-50/40">NB</th>
-                  <th className="p-1 text-center border-r border-slate-200 bg-indigo-50/40">TH</th>
-                  <th className="p-1 text-center border-r border-slate-200 bg-indigo-50/40">VD</th>
-                  <th className="p-1 text-center border-r border-slate-200 bg-indigo-50/40">VDC</th>
+                  <th className={`p-1 text-center border-r border-slate-200 ${isP1Active ? 'bg-indigo-50/40 text-slate-700' : 'bg-slate-200/60 text-slate-400'}`}>NB</th>
+                  <th className={`p-1 text-center border-r border-slate-200 ${isP1Active ? 'bg-indigo-50/40 text-slate-700' : 'bg-slate-200/60 text-slate-400'}`}>TH</th>
+                  <th className={`p-1 text-center border-r border-slate-200 ${isP1Active ? 'bg-indigo-50/40 text-slate-700' : 'bg-slate-200/60 text-slate-400'}`}>VD</th>
+                  <th className={`p-1 text-center border-r border-slate-200 ${isP1Active ? 'bg-indigo-50/40 text-slate-700' : 'bg-slate-200/60 text-slate-400'}`}>VDC</th>
                   {/* Part 2 */}
-                  <th className="p-1 text-center border-r border-slate-200 bg-blue-50/40">NB</th>
-                  <th className="p-1 text-center border-r border-slate-200 bg-blue-50/40">TH</th>
-                  <th className="p-1 text-center border-r border-slate-200 bg-blue-50/40">VD</th>
-                  <th className="p-1 text-center border-r border-slate-200 bg-blue-50/40">VDC</th>
+                  <th className={`p-1 text-center border-r border-slate-200 ${isP2Active ? 'bg-blue-50/40 text-slate-700' : 'bg-slate-200/60 text-slate-400'}`}>NB</th>
+                  <th className={`p-1 text-center border-r border-slate-200 ${isP2Active ? 'bg-blue-50/40 text-slate-700' : 'bg-slate-200/60 text-slate-400'}`}>TH</th>
+                  <th className={`p-1 text-center border-r border-slate-200 ${isP2Active ? 'bg-blue-50/40 text-slate-700' : 'bg-slate-200/60 text-slate-400'}`}>VD</th>
+                  <th className={`p-1 text-center border-r border-slate-200 ${isP2Active ? 'bg-blue-50/40 text-slate-700' : 'bg-slate-200/60 text-slate-400'}`}>VDC</th>
                   {/* Part 3 */}
-                  <th className="p-1 text-center border-r border-slate-200 bg-emerald-50/40">NB</th>
-                  <th className="p-1 text-center border-r border-slate-200 bg-emerald-50/40">TH</th>
-                  <th className="p-1 text-center border-r border-slate-200 bg-emerald-50/40">VD</th>
-                  <th className="p-1 text-center border-r border-slate-200 bg-emerald-50/40">VDC</th>
+                  <th className={`p-1 text-center border-r border-slate-200 ${isP3Active ? 'bg-emerald-50/40 text-slate-700' : 'bg-slate-200/60 text-slate-400'}`}>NB</th>
+                  <th className={`p-1 text-center border-r border-slate-200 ${isP3Active ? 'bg-emerald-50/40 text-slate-700' : 'bg-slate-200/60 text-slate-400'}`}>TH</th>
+                  <th className={`p-1 text-center border-r border-slate-200 ${isP3Active ? 'bg-emerald-50/40 text-slate-700' : 'bg-slate-200/60 text-slate-400'}`}>VD</th>
+                  <th className={`p-1 text-center border-r border-slate-200 ${isP3Active ? 'bg-emerald-50/40 text-slate-700' : 'bg-slate-200/60 text-slate-400'}`}>VDC</th>
                   {/* Part 4 */}
-                  <th className="p-1 text-center border-r border-slate-200 bg-amber-50/40">NB</th>
-                  <th className="p-1 text-center border-r border-slate-200 bg-amber-50/40">TH</th>
-                  <th className="p-1 text-center border-r border-slate-200 bg-amber-50/40">VD</th>
-                  <th className="p-1 text-center border-r border-slate-200 bg-amber-50/40">VDC</th>
+                  <th className={`p-1 text-center border-r border-slate-200 ${isP4Active ? 'bg-amber-50/40 text-slate-700' : 'bg-slate-200/60 text-slate-400'}`}>NB</th>
+                  <th className={`p-1 text-center border-r border-slate-200 ${isP4Active ? 'bg-amber-50/40 text-slate-700' : 'bg-slate-200/60 text-slate-400'}`}>TH</th>
+                  <th className={`p-1 text-center border-r border-slate-200 ${isP4Active ? 'bg-amber-50/40 text-slate-700' : 'bg-slate-200/60 text-slate-400'}`}>VD</th>
+                  <th className={`p-1 text-center border-r border-slate-200 ${isP4Active ? 'bg-amber-50/40 text-slate-700' : 'bg-slate-200/60 text-slate-400'}`}>VDC</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
@@ -1570,59 +1604,171 @@ export const MatrixStep: React.FC<MatrixStepProps> = ({
                     </td>
 
                     {/* Part 1 inputs */}
-                    <td className="p-0.5 border-r border-slate-200">
-                      <input type="number" min={0} value={row.part1_nb} onChange={(e) => handleUpdateRow(row.id, 'part1_nb', Number(e.target.value) || 0)} className="w-10 text-center py-1 bg-transparent focus:bg-white border-0 rounded font-semibold text-indigo-900" />
+                    <td className={`p-0.5 border-r border-slate-200 ${!isP1Active ? 'bg-slate-100/70' : ''}`}>
+                      {isP1Active ? (
+                        <input type="number" min={0} value={row.part1_nb} onChange={(e) => handleUpdateRow(row.id, 'part1_nb', Number(e.target.value) || 0)} className="w-10 text-center py-1 bg-transparent focus:bg-white border-0 rounded font-semibold text-indigo-900" />
+                      ) : (
+                        <div className="w-10 py-1 text-center font-semibold text-slate-300 select-none flex items-center justify-center gap-0.5 mx-auto" title="Phần I đã khóa theo cấu trúc đề thi">
+                          <Lock className="w-2.5 h-2.5 text-slate-400" />
+                          <span className="text-[11px]">—</span>
+                        </div>
+                      )}
                     </td>
-                    <td className="p-0.5 border-r border-slate-200">
-                      <input type="number" min={0} value={row.part1_th} onChange={(e) => handleUpdateRow(row.id, 'part1_th', Number(e.target.value) || 0)} className="w-10 text-center py-1 bg-transparent focus:bg-white border-0 rounded font-semibold text-indigo-900" />
+                    <td className={`p-0.5 border-r border-slate-200 ${!isP1Active ? 'bg-slate-100/70' : ''}`}>
+                      {isP1Active ? (
+                        <input type="number" min={0} value={row.part1_th} onChange={(e) => handleUpdateRow(row.id, 'part1_th', Number(e.target.value) || 0)} className="w-10 text-center py-1 bg-transparent focus:bg-white border-0 rounded font-semibold text-indigo-900" />
+                      ) : (
+                        <div className="w-10 py-1 text-center font-semibold text-slate-300 select-none flex items-center justify-center gap-0.5 mx-auto" title="Phần I đã khóa theo cấu trúc đề thi">
+                          <Lock className="w-2.5 h-2.5 text-slate-400" />
+                          <span className="text-[11px]">—</span>
+                        </div>
+                      )}
                     </td>
-                    <td className="p-0.5 border-r border-slate-200">
-                      <input type="number" min={0} value={row.part1_vd} onChange={(e) => handleUpdateRow(row.id, 'part1_vd', Number(e.target.value) || 0)} className="w-10 text-center py-1 bg-transparent focus:bg-white border-0 rounded font-semibold text-indigo-900" />
+                    <td className={`p-0.5 border-r border-slate-200 ${!isP1Active ? 'bg-slate-100/70' : ''}`}>
+                      {isP1Active ? (
+                        <input type="number" min={0} value={row.part1_vd} onChange={(e) => handleUpdateRow(row.id, 'part1_vd', Number(e.target.value) || 0)} className="w-10 text-center py-1 bg-transparent focus:bg-white border-0 rounded font-semibold text-indigo-900" />
+                      ) : (
+                        <div className="w-10 py-1 text-center font-semibold text-slate-300 select-none flex items-center justify-center gap-0.5 mx-auto" title="Phần I đã khóa theo cấu trúc đề thi">
+                          <Lock className="w-2.5 h-2.5 text-slate-400" />
+                          <span className="text-[11px]">—</span>
+                        </div>
+                      )}
                     </td>
-                    <td className="p-0.5 border-r border-slate-200">
-                      <input type="number" min={0} value={row.part1_vdc} onChange={(e) => handleUpdateRow(row.id, 'part1_vdc', Number(e.target.value) || 0)} className="w-10 text-center py-1 bg-transparent focus:bg-white border-0 rounded font-semibold text-indigo-900" />
+                    <td className={`p-0.5 border-r border-slate-200 ${!isP1Active ? 'bg-slate-100/70' : ''}`}>
+                      {isP1Active ? (
+                        <input type="number" min={0} value={row.part1_vdc} onChange={(e) => handleUpdateRow(row.id, 'part1_vdc', Number(e.target.value) || 0)} className="w-10 text-center py-1 bg-transparent focus:bg-white border-0 rounded font-semibold text-indigo-900" />
+                      ) : (
+                        <div className="w-10 py-1 text-center font-semibold text-slate-300 select-none flex items-center justify-center gap-0.5 mx-auto" title="Phần I đã khóa theo cấu trúc đề thi">
+                          <Lock className="w-2.5 h-2.5 text-slate-400" />
+                          <span className="text-[11px]">—</span>
+                        </div>
+                      )}
                     </td>
 
                     {/* Part 2 inputs */}
-                    <td className="p-0.5 border-r border-slate-200">
-                      <input type="number" min={0} value={row.part2_nb} onChange={(e) => handleUpdateRow(row.id, 'part2_nb', Number(e.target.value) || 0)} className="w-10 text-center py-1 bg-transparent focus:bg-white border-0 rounded font-semibold text-blue-900" />
+                    <td className={`p-0.5 border-r border-slate-200 ${!isP2Active ? 'bg-slate-100/70' : ''}`}>
+                      {isP2Active ? (
+                        <input type="number" min={0} value={row.part2_nb} onChange={(e) => handleUpdateRow(row.id, 'part2_nb', Number(e.target.value) || 0)} className="w-10 text-center py-1 bg-transparent focus:bg-white border-0 rounded font-semibold text-blue-900" />
+                      ) : (
+                        <div className="w-10 py-1 text-center font-semibold text-slate-300 select-none flex items-center justify-center gap-0.5 mx-auto" title="Phần II đã khóa theo cấu trúc đề thi">
+                          <Lock className="w-2.5 h-2.5 text-slate-400" />
+                          <span className="text-[11px]">—</span>
+                        </div>
+                      )}
                     </td>
-                    <td className="p-0.5 border-r border-slate-200">
-                      <input type="number" min={0} value={row.part2_th} onChange={(e) => handleUpdateRow(row.id, 'part2_th', Number(e.target.value) || 0)} className="w-10 text-center py-1 bg-transparent focus:bg-white border-0 rounded font-semibold text-blue-900" />
+                    <td className={`p-0.5 border-r border-slate-200 ${!isP2Active ? 'bg-slate-100/70' : ''}`}>
+                      {isP2Active ? (
+                        <input type="number" min={0} value={row.part2_th} onChange={(e) => handleUpdateRow(row.id, 'part2_th', Number(e.target.value) || 0)} className="w-10 text-center py-1 bg-transparent focus:bg-white border-0 rounded font-semibold text-blue-900" />
+                      ) : (
+                        <div className="w-10 py-1 text-center font-semibold text-slate-300 select-none flex items-center justify-center gap-0.5 mx-auto" title="Phần II đã khóa theo cấu trúc đề thi">
+                          <Lock className="w-2.5 h-2.5 text-slate-400" />
+                          <span className="text-[11px]">—</span>
+                        </div>
+                      )}
                     </td>
-                    <td className="p-0.5 border-r border-slate-200">
-                      <input type="number" min={0} value={row.part2_vd} onChange={(e) => handleUpdateRow(row.id, 'part2_vd', Number(e.target.value) || 0)} className="w-10 text-center py-1 bg-transparent focus:bg-white border-0 rounded font-semibold text-blue-900" />
+                    <td className={`p-0.5 border-r border-slate-200 ${!isP2Active ? 'bg-slate-100/70' : ''}`}>
+                      {isP2Active ? (
+                        <input type="number" min={0} value={row.part2_vd} onChange={(e) => handleUpdateRow(row.id, 'part2_vd', Number(e.target.value) || 0)} className="w-10 text-center py-1 bg-transparent focus:bg-white border-0 rounded font-semibold text-blue-900" />
+                      ) : (
+                        <div className="w-10 py-1 text-center font-semibold text-slate-300 select-none flex items-center justify-center gap-0.5 mx-auto" title="Phần II đã khóa theo cấu trúc đề thi">
+                          <Lock className="w-2.5 h-2.5 text-slate-400" />
+                          <span className="text-[11px]">—</span>
+                        </div>
+                      )}
                     </td>
-                    <td className="p-0.5 border-r border-slate-200">
-                      <input type="number" min={0} value={row.part2_vdc} onChange={(e) => handleUpdateRow(row.id, 'part2_vdc', Number(e.target.value) || 0)} className="w-10 text-center py-1 bg-transparent focus:bg-white border-0 rounded font-semibold text-blue-900" />
+                    <td className={`p-0.5 border-r border-slate-200 ${!isP2Active ? 'bg-slate-100/70' : ''}`}>
+                      {isP2Active ? (
+                        <input type="number" min={0} value={row.part2_vdc} onChange={(e) => handleUpdateRow(row.id, 'part2_vdc', Number(e.target.value) || 0)} className="w-10 text-center py-1 bg-transparent focus:bg-white border-0 rounded font-semibold text-blue-900" />
+                      ) : (
+                        <div className="w-10 py-1 text-center font-semibold text-slate-300 select-none flex items-center justify-center gap-0.5 mx-auto" title="Phần II đã khóa theo cấu trúc đề thi">
+                          <Lock className="w-2.5 h-2.5 text-slate-400" />
+                          <span className="text-[11px]">—</span>
+                        </div>
+                      )}
                     </td>
 
                     {/* Part 3 inputs */}
-                    <td className="p-0.5 border-r border-slate-200">
-                      <input type="number" min={0} value={row.part3_nb} onChange={(e) => handleUpdateRow(row.id, 'part3_nb', Number(e.target.value) || 0)} className="w-10 text-center py-1 bg-transparent focus:bg-white border-0 rounded font-semibold text-emerald-900" />
+                    <td className={`p-0.5 border-r border-slate-200 ${!isP3Active ? 'bg-slate-100/70' : ''}`}>
+                      {isP3Active ? (
+                        <input type="number" min={0} value={row.part3_nb} onChange={(e) => handleUpdateRow(row.id, 'part3_nb', Number(e.target.value) || 0)} className="w-10 text-center py-1 bg-transparent focus:bg-white border-0 rounded font-semibold text-emerald-900" />
+                      ) : (
+                        <div className="w-10 py-1 text-center font-semibold text-slate-300 select-none flex items-center justify-center gap-0.5 mx-auto" title="Phần III đã khóa theo cấu trúc đề thi">
+                          <Lock className="w-2.5 h-2.5 text-slate-400" />
+                          <span className="text-[11px]">—</span>
+                        </div>
+                      )}
                     </td>
-                    <td className="p-0.5 border-r border-slate-200">
-                      <input type="number" min={0} value={row.part3_th} onChange={(e) => handleUpdateRow(row.id, 'part3_th', Number(e.target.value) || 0)} className="w-10 text-center py-1 bg-transparent focus:bg-white border-0 rounded font-semibold text-emerald-900" />
+                    <td className={`p-0.5 border-r border-slate-200 ${!isP3Active ? 'bg-slate-100/70' : ''}`}>
+                      {isP3Active ? (
+                        <input type="number" min={0} value={row.part3_th} onChange={(e) => handleUpdateRow(row.id, 'part3_th', Number(e.target.value) || 0)} className="w-10 text-center py-1 bg-transparent focus:bg-white border-0 rounded font-semibold text-emerald-900" />
+                      ) : (
+                        <div className="w-10 py-1 text-center font-semibold text-slate-300 select-none flex items-center justify-center gap-0.5 mx-auto" title="Phần III đã khóa theo cấu trúc đề thi">
+                          <Lock className="w-2.5 h-2.5 text-slate-400" />
+                          <span className="text-[11px]">—</span>
+                        </div>
+                      )}
                     </td>
-                    <td className="p-0.5 border-r border-slate-200">
-                      <input type="number" min={0} value={row.part3_vd} onChange={(e) => handleUpdateRow(row.id, 'part3_vd', Number(e.target.value) || 0)} className="w-10 text-center py-1 bg-transparent focus:bg-white border-0 rounded font-semibold text-emerald-900" />
+                    <td className={`p-0.5 border-r border-slate-200 ${!isP3Active ? 'bg-slate-100/70' : ''}`}>
+                      {isP3Active ? (
+                        <input type="number" min={0} value={row.part3_vd} onChange={(e) => handleUpdateRow(row.id, 'part3_vd', Number(e.target.value) || 0)} className="w-10 text-center py-1 bg-transparent focus:bg-white border-0 rounded font-semibold text-emerald-900" />
+                      ) : (
+                        <div className="w-10 py-1 text-center font-semibold text-slate-300 select-none flex items-center justify-center gap-0.5 mx-auto" title="Phần III đã khóa theo cấu trúc đề thi">
+                          <Lock className="w-2.5 h-2.5 text-slate-400" />
+                          <span className="text-[11px]">—</span>
+                        </div>
+                      )}
                     </td>
-                    <td className="p-0.5 border-r border-slate-200">
-                      <input type="number" min={0} value={row.part3_vdc} onChange={(e) => handleUpdateRow(row.id, 'part3_vdc', Number(e.target.value) || 0)} className="w-10 text-center py-1 bg-transparent focus:bg-white border-0 rounded font-semibold text-emerald-900" />
+                    <td className={`p-0.5 border-r border-slate-200 ${!isP3Active ? 'bg-slate-100/70' : ''}`}>
+                      {isP3Active ? (
+                        <input type="number" min={0} value={row.part3_vdc} onChange={(e) => handleUpdateRow(row.id, 'part3_vdc', Number(e.target.value) || 0)} className="w-10 text-center py-1 bg-transparent focus:bg-white border-0 rounded font-semibold text-emerald-900" />
+                      ) : (
+                        <div className="w-10 py-1 text-center font-semibold text-slate-300 select-none flex items-center justify-center gap-0.5 mx-auto" title="Phần III đã khóa theo cấu trúc đề thi">
+                          <Lock className="w-2.5 h-2.5 text-slate-400" />
+                          <span className="text-[11px]">—</span>
+                        </div>
+                      )}
                     </td>
 
                     {/* Part 4 inputs */}
-                    <td className="p-0.5 border-r border-slate-200">
-                      <input type="number" min={0} value={row.part4_nb} onChange={(e) => handleUpdateRow(row.id, 'part4_nb', Number(e.target.value) || 0)} className="w-10 text-center py-1 bg-transparent focus:bg-white border-0 rounded font-semibold text-amber-900" />
+                    <td className={`p-0.5 border-r border-slate-200 ${!isP4Active ? 'bg-slate-100/70' : ''}`}>
+                      {isP4Active ? (
+                        <input type="number" min={0} value={row.part4_nb} onChange={(e) => handleUpdateRow(row.id, 'part4_nb', Number(e.target.value) || 0)} className="w-10 text-center py-1 bg-transparent focus:bg-white border-0 rounded font-semibold text-amber-900" />
+                      ) : (
+                        <div className="w-10 py-1 text-center font-semibold text-slate-300 select-none flex items-center justify-center gap-0.5 mx-auto" title="Phần IV (Tự luận) đã khóa theo cấu trúc đề thi">
+                          <Lock className="w-2.5 h-2.5 text-slate-400" />
+                          <span className="text-[11px]">—</span>
+                        </div>
+                      )}
                     </td>
-                    <td className="p-0.5 border-r border-slate-200">
-                      <input type="number" min={0} value={row.part4_th} onChange={(e) => handleUpdateRow(row.id, 'part4_th', Number(e.target.value) || 0)} className="w-10 text-center py-1 bg-transparent focus:bg-white border-0 rounded font-semibold text-amber-900" />
+                    <td className={`p-0.5 border-r border-slate-200 ${!isP4Active ? 'bg-slate-100/70' : ''}`}>
+                      {isP4Active ? (
+                        <input type="number" min={0} value={row.part4_th} onChange={(e) => handleUpdateRow(row.id, 'part4_th', Number(e.target.value) || 0)} className="w-10 text-center py-1 bg-transparent focus:bg-white border-0 rounded font-semibold text-amber-900" />
+                      ) : (
+                        <div className="w-10 py-1 text-center font-semibold text-slate-300 select-none flex items-center justify-center gap-0.5 mx-auto" title="Phần IV (Tự luận) đã khóa theo cấu trúc đề thi">
+                          <Lock className="w-2.5 h-2.5 text-slate-400" />
+                          <span className="text-[11px]">—</span>
+                        </div>
+                      )}
                     </td>
-                    <td className="p-0.5 border-r border-slate-200">
-                      <input type="number" min={0} value={row.part4_vd} onChange={(e) => handleUpdateRow(row.id, 'part4_vd', Number(e.target.value) || 0)} className="w-10 text-center py-1 bg-transparent focus:bg-white border-0 rounded font-semibold text-amber-900" />
+                    <td className={`p-0.5 border-r border-slate-200 ${!isP4Active ? 'bg-slate-100/70' : ''}`}>
+                      {isP4Active ? (
+                        <input type="number" min={0} value={row.part4_vd} onChange={(e) => handleUpdateRow(row.id, 'part4_vd', Number(e.target.value) || 0)} className="w-10 text-center py-1 bg-transparent focus:bg-white border-0 rounded font-semibold text-amber-900" />
+                      ) : (
+                        <div className="w-10 py-1 text-center font-semibold text-slate-300 select-none flex items-center justify-center gap-0.5 mx-auto" title="Phần IV (Tự luận) đã khóa theo cấu trúc đề thi">
+                          <Lock className="w-2.5 h-2.5 text-slate-400" />
+                          <span className="text-[11px]">—</span>
+                        </div>
+                      )}
                     </td>
-                    <td className="p-0.5 border-r border-slate-200">
-                      <input type="number" min={0} value={row.part4_vdc} onChange={(e) => handleUpdateRow(row.id, 'part4_vdc', Number(e.target.value) || 0)} className="w-10 text-center py-1 bg-transparent focus:bg-white border-0 rounded font-semibold text-amber-900" />
+                    <td className={`p-0.5 border-r border-slate-200 ${!isP4Active ? 'bg-slate-100/70' : ''}`}>
+                      {isP4Active ? (
+                        <input type="number" min={0} value={row.part4_vdc} onChange={(e) => handleUpdateRow(row.id, 'part4_vdc', Number(e.target.value) || 0)} className="w-10 text-center py-1 bg-transparent focus:bg-white border-0 rounded font-semibold text-amber-900" />
+                      ) : (
+                        <div className="w-10 py-1 text-center font-semibold text-slate-300 select-none flex items-center justify-center gap-0.5 mx-auto" title="Phần IV (Tự luận) đã khóa theo cấu trúc đề thi">
+                          <Lock className="w-2.5 h-2.5 text-slate-400" />
+                          <span className="text-[11px]">—</span>
+                        </div>
+                      )}
                     </td>
 
                     <td className="p-2 text-center font-bold text-indigo-700 bg-indigo-50/30 border-r border-slate-200">

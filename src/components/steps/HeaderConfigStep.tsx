@@ -14,6 +14,8 @@ import {
 } from 'lucide-react';
 import { ExamHeaderConfig, StructureOption, GradeLevel, SchoolLevel } from '../../types';
 import { SUBJECTS_LIST, CURRICULUM_SERIES, EXAM_TYPES, PROVINCES_VIETNAM } from '../../data/curriculumData';
+import { STRUCTURE_OPTIONS_METADATA, getStructurePartConfigs } from '../../utils/structurePresets';
+import { Lock, Check } from 'lucide-react';
 
 interface HeaderConfigStepProps {
   header: ExamHeaderConfig;
@@ -38,17 +40,37 @@ export const HeaderConfigStep: React.FC<HeaderConfigStepProps> = ({
 
   const handleSubjectChange = (subjectName: string) => {
     const found = SUBJECTS_LIST.find(s => s.name === subjectName);
+    const isLiterature = subjectName.toLowerCase().includes('văn') || subjectName.toLowerCase().includes('tiếng việt');
+    const newStructure: StructureOption = isLiterature ? 'option_tuluan' : (header.structureOption === 'option_tuluan' ? 'option_1' : header.structureOption);
+    const newPartConfigs = getStructurePartConfigs(newStructure, undefined, subjectName);
+
     if (found) {
       const defaultGrade = found.grades[found.grades.length - 1]; // e.g. Lớp 12
       onChangeHeader({
         ...header,
         subject: found.name,
         grade: defaultGrade,
-        timeDuration: found.defaultDuration,
+        timeDuration: isLiterature ? '90 phút' : found.defaultDuration,
+        structureOption: newStructure,
+        partConfigs: newPartConfigs
       });
     } else {
-      onChangeHeader({ ...header, subject: subjectName });
+      onChangeHeader({
+        ...header,
+        subject: subjectName,
+        structureOption: newStructure,
+        partConfigs: newPartConfigs
+      });
     }
+  };
+
+  const handleSelectStructure = (structureId: StructureOption) => {
+    const newPartConfigs = getStructurePartConfigs(structureId, header.partConfigs, header.subject);
+    onChangeHeader({
+      ...header,
+      structureOption: structureId,
+      partConfigs: newPartConfigs
+    });
   };
 
   const handleLevelChange = (level: SchoolLevel) => {
@@ -56,11 +78,17 @@ export const HeaderConfigStep: React.FC<HeaderConfigStepProps> = ({
     const subjectsForLevel = SUBJECTS_LIST.filter(s => s.level === level);
     if (subjectsForLevel.length > 0) {
       const first = subjectsForLevel[0];
+      const isLiterature = first.name.toLowerCase().includes('văn') || first.name.toLowerCase().includes('tiếng việt');
+      const newStructure: StructureOption = isLiterature ? 'option_tuluan' : 'option_1';
+      const newPartConfigs = getStructurePartConfigs(newStructure, undefined, first.name);
+
       onChangeHeader({
         ...header,
         subject: first.name,
         grade: first.grades[first.grades.length - 1],
         timeDuration: first.defaultDuration,
+        structureOption: newStructure,
+        partConfigs: newPartConfigs
       });
     }
   };
@@ -69,33 +97,6 @@ export const HeaderConfigStep: React.FC<HeaderConfigStepProps> = ({
   const gradeOptions: GradeLevel[] = currentSubjectInfo 
     ? currentSubjectInfo.grades 
     : ['Lớp 10', 'Lớp 11', 'Lớp 12'];
-
-  const structureOptions: { id: StructureOption; title: string; desc: string; badge: string }[] = [
-    {
-      id: 'option_1',
-      title: 'Tùy chọn 1 (Chuẩn mới 2025)',
-      desc: 'Trắc nghiệm 4 lựa chọn + Đúng/Sai + Trả lời ngắn + Tự luận',
-      badge: 'Khuyên dùng cho THPT & THCS'
-    },
-    {
-      id: 'option_2',
-      title: 'Tùy chọn 2 (Truyền thống kết hợp)',
-      desc: 'Trắc nghiệm 4 lựa chọn + Đúng/Sai + Tự luận (Không có Trả lời ngắn)',
-      badge: 'Phổ biến kiểm tra định kỳ'
-    },
-    {
-      id: 'option_3',
-      title: 'Tùy chọn 3 (100% Trắc nghiệm)',
-      desc: 'Trắc nghiệm 4 lựa chọn + Đúng/Sai + Trả lời ngắn (Không có Tự luận)',
-      badge: 'Chấm máy nhanh'
-    },
-    {
-      id: 'option_4',
-      title: 'Tùy chọn 4 (Tùy chỉnh tự do)',
-      desc: 'Tự do phân bổ tỷ lệ phần trăm và cấu trúc câu hỏi theo yêu cầu riêng',
-      badge: 'Linh hoạt'
-    },
-  ];
 
   return (
     <div className="space-y-8 animate-in fade-in duration-200">
@@ -280,32 +281,71 @@ export const HeaderConfigStep: React.FC<HeaderConfigStepProps> = ({
 
           {/* Section 2: Structure Options Selection (Prompt Requirement 2) */}
           <div className="pt-4 border-t border-slate-100">
-            <label className="block text-xs font-bold text-slate-900 mb-3 uppercase tracking-wider">
-              2. Lựa Chọn Cấu Trúc Đề Thi & Định Dạng Ma Trận
-            </label>
+            <div className="flex items-center justify-between mb-3">
+              <label className="block text-xs font-bold text-slate-900 uppercase tracking-wider">
+                2. Lựa Chọn Cấu Trúc Đề Thi & Định Dạng Ma Trận
+              </label>
+              <span className="text-[11px] text-slate-500 font-medium italic">
+                * Các phần không dùng sẽ tự động khóa trên Ma trận
+              </span>
+            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {structureOptions.map(opt => (
-                <div
-                  key={opt.id}
-                  onClick={() => onChangeHeader({ ...header, structureOption: opt.id })}
-                  className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                    header.structureOption === opt.id
-                      ? 'border-indigo-600 bg-indigo-50/50 shadow-xs'
-                      : 'border-slate-200 hover:border-slate-300 bg-white'
-                  }`}
-                >
-                  <div className="flex items-start justify-between">
-                    <span className="font-bold text-xs text-slate-900">{opt.title}</span>
-                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-100/70 text-indigo-700">
-                      {opt.badge}
-                    </span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              {STRUCTURE_OPTIONS_METADATA.map(opt => {
+                const isSelected = header.structureOption === opt.id;
+                const hasLockedParts = opt.lockedPartsDesc.includes('🔒');
+
+                return (
+                  <div
+                    key={opt.id}
+                    onClick={() => handleSelectStructure(opt.id)}
+                    className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex flex-col justify-between ${
+                      isSelected
+                        ? 'border-indigo-600 bg-indigo-50/70 shadow-sm ring-2 ring-indigo-500/20'
+                        : 'border-slate-200 hover:border-indigo-300 bg-white hover:bg-slate-50/50'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-1.5">
+                          {isSelected && (
+                            <div className="w-4 h-4 rounded-full bg-indigo-600 text-white flex items-center justify-center shrink-0">
+                              <Check className="w-2.5 h-2.5 stroke-[3]" />
+                            </div>
+                          )}
+                          <span className="font-bold text-xs text-slate-900 leading-snug">{opt.title}</span>
+                        </div>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
+                          isSelected ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-700'
+                        }`}>
+                          {opt.badge}
+                        </span>
+                      </div>
+
+                      <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+                        {opt.desc}
+                      </p>
+                    </div>
+
+                    <div className="mt-3 pt-2.5 border-t border-slate-200/60 space-y-1.5">
+                      <div className="text-[11px] font-medium text-slate-700 flex items-center gap-1">
+                        <span className="text-indigo-600 font-bold">Phân bổ:</span> {opt.activePartsSummary}
+                      </div>
+                      {hasLockedParts ? (
+                        <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-900 border border-amber-200/70">
+                          <Lock className="w-3 h-3 text-amber-600" />
+                          <span>{opt.lockedPartsDesc}</span>
+                        </div>
+                      ) : (
+                        <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/70">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                          <span>Mở đầy đủ 4 phần</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <p className="text-xs text-slate-600 mt-1.5 leading-relaxed">
-                    {opt.desc}
-                  </p>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
