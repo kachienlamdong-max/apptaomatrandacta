@@ -289,10 +289,10 @@ export function sanitizeMatrixForPartConfigs(
   matrix: MatrixRow[],
   partConfigs: ExamPartConfigs
 ): MatrixRow[] {
-  const p1Enabled = partConfigs.part1?.enabled ?? true;
-  const p2Enabled = partConfigs.part2?.enabled ?? true;
-  const p3Enabled = partConfigs.part3?.enabled ?? true;
-  const p4Enabled = partConfigs.part4?.enabled ?? true;
+  const p1Enabled = (partConfigs.part1?.enabled !== false) && ((partConfigs.part1?.targetQuestions ?? 12) > 0);
+  const p2Enabled = (partConfigs.part2?.enabled !== false) && ((partConfigs.part2?.targetQuestions ?? 4) > 0);
+  const p3Enabled = (partConfigs.part3?.enabled !== false) && ((partConfigs.part3?.targetQuestions ?? 6) > 0);
+  const p4Enabled = (partConfigs.part4?.enabled !== false) && ((partConfigs.part4?.targetQuestions ?? 2) > 0);
 
   const p1Pts = p1Enabled ? (partConfigs.part1?.pointsPerQuestion ?? 0.25) : 0;
   const p2Pts = p2Enabled ? (partConfigs.part2?.pointsPerQuestion ?? 1.0) : 0;
@@ -357,10 +357,10 @@ export function sanitizeSpecificationForPartConfigs(
   spec: SpecificationItem[],
   partConfigs: ExamPartConfigs
 ): SpecificationItem[] {
-  const p1Enabled = partConfigs.part1?.enabled ?? true;
-  const p2Enabled = partConfigs.part2?.enabled ?? true;
-  const p3Enabled = partConfigs.part3?.enabled ?? true;
-  const p4Enabled = partConfigs.part4?.enabled ?? true;
+  const p1Enabled = (partConfigs.part1?.enabled !== false) && ((partConfigs.part1?.targetQuestions ?? 12) > 0);
+  const p2Enabled = (partConfigs.part2?.enabled !== false) && ((partConfigs.part2?.targetQuestions ?? 4) > 0);
+  const p3Enabled = (partConfigs.part3?.enabled !== false) && ((partConfigs.part3?.targetQuestions ?? 6) > 0);
+  const p4Enabled = (partConfigs.part4?.enabled !== false) && ((partConfigs.part4?.targetQuestions ?? 2) > 0);
 
   return spec.map(item => ({
     ...item,
@@ -371,4 +371,193 @@ export function sanitizeSpecificationForPartConfigs(
       part4: p4Enabled ? (item.questionCount?.part4 || { nb: 0, th: 0, vd: 0, vdc: 0 }) : { nb: 0, th: 0, vd: 0, vdc: 0 },
     }
   }));
+}
+
+/**
+ * Automatically balances and allocates target questions across matrix topics
+ * based on standard MOET cognitive ratio (40% NB, 30% TH, 20% VD, 10% VDC)
+ */
+export function autoBalanceMatrixToTarget(
+  matrix: MatrixRow[],
+  partConfigs: ExamPartConfigs
+): MatrixRow[] {
+  if (!matrix || matrix.length === 0) return matrix;
+
+  const p1Enabled = (partConfigs.part1?.enabled !== false) && ((partConfigs.part1?.targetQuestions ?? 0) > 0);
+  const p2Enabled = (partConfigs.part2?.enabled !== false) && ((partConfigs.part2?.targetQuestions ?? 0) > 0);
+  const p3Enabled = (partConfigs.part3?.enabled !== false) && ((partConfigs.part3?.targetQuestions ?? 0) > 0);
+  const p4Enabled = (partConfigs.part4?.enabled !== false) && ((partConfigs.part4?.targetQuestions ?? 0) > 0);
+
+  const p1Target = p1Enabled ? (partConfigs.part1?.targetQuestions ?? 0) : 0;
+  const p2Target = p2Enabled ? (partConfigs.part2?.targetQuestions ?? 0) : 0;
+  const p3Target = p3Enabled ? (partConfigs.part3?.targetQuestions ?? 0) : 0;
+  const p4Target = p4Enabled ? (partConfigs.part4?.targetQuestions ?? 0) : 0;
+
+  const p1Pts = p1Enabled ? (partConfigs.part1?.pointsPerQuestion ?? 0.25) : 0;
+  const p2Pts = p2Enabled ? (partConfigs.part2?.pointsPerQuestion ?? 1.0) : 0;
+  const p3Pts = p3Enabled ? (partConfigs.part3?.pointsPerQuestion ?? 0.5) : 0;
+  const p4Pts = p4Enabled ? (partConfigs.part4?.pointsPerQuestion ?? 1.0) : 0;
+
+  const rowCount = matrix.length;
+  const rowAllocations = matrix.map(() => ({
+    part1_nb: 0, part1_th: 0, part1_vd: 0, part1_vdc: 0,
+    part2_nb: 0, part2_th: 0, part2_vd: 0, part2_vdc: 0,
+    part3_nb: 0, part3_th: 0, part3_vd: 0, part3_vdc: 0,
+    part4_nb: 0, part4_th: 0, part4_vd: 0, part4_vdc: 0,
+  }));
+
+  // Distribute Part 1 (Multiple Choice)
+  if (p1Target > 0) {
+    const nbTarget = Math.round(p1Target * 0.4);
+    const thTarget = Math.round(p1Target * 0.3);
+    const vdTarget = Math.round(p1Target * 0.2);
+    const vdcTarget = Math.max(0, p1Target - nbTarget - thTarget - vdTarget);
+
+    let assigned = 0;
+    for (let i = 0; i < nbTarget; i++) {
+      rowAllocations[i % rowCount].part1_nb++;
+      assigned++;
+    }
+    for (let i = 0; i < thTarget; i++) {
+      rowAllocations[(nbTarget + i) % rowCount].part1_th++;
+      assigned++;
+    }
+    for (let i = 0; i < vdTarget; i++) {
+      rowAllocations[(nbTarget + thTarget + i) % rowCount].part1_vd++;
+      assigned++;
+    }
+    for (let i = 0; i < vdcTarget; i++) {
+      rowAllocations[(nbTarget + thTarget + vdTarget + i) % rowCount].part1_vdc++;
+      assigned++;
+    }
+    while (assigned < p1Target) {
+      rowAllocations[assigned % rowCount].part1_th++;
+      assigned++;
+    }
+  }
+
+  // Distribute Part 2 (True/False)
+  if (p2Target > 0) {
+    for (let i = 0; i < p2Target; i++) {
+      const rIdx = i % rowCount;
+      if (i === 0) rowAllocations[rIdx].part2_nb++;
+      else if (i === 1) rowAllocations[rIdx].part2_th++;
+      else if (i === 2) rowAllocations[rIdx].part2_vd++;
+      else rowAllocations[rIdx].part2_th++;
+    }
+  }
+
+  // Distribute Part 3 (Short Answer)
+  if (p3Target > 0) {
+    for (let i = 0; i < p3Target; i++) {
+      const rIdx = i % rowCount;
+      if (i % 2 === 0) rowAllocations[rIdx].part3_th++;
+      else rowAllocations[rIdx].part3_vd++;
+    }
+  }
+
+  // Distribute Part 4 (Essay)
+  if (p4Target > 0) {
+    for (let i = 0; i < p4Target; i++) {
+      const rIdx = i % rowCount;
+      if (i === 0) rowAllocations[rIdx].part4_th++;
+      else if (i === 1) rowAllocations[rIdx].part4_vd++;
+      else if (i === 2) rowAllocations[rIdx].part4_vdc++;
+      else rowAllocations[rIdx].part4_vd++;
+    }
+  }
+
+  return matrix.map((row, idx) => {
+    const alloc = rowAllocations[idx];
+    const p1Score = (alloc.part1_nb + alloc.part1_th + alloc.part1_vd + alloc.part1_vdc) * p1Pts;
+    const p2Score = (alloc.part2_nb + alloc.part2_th + alloc.part2_vd + alloc.part2_vdc) * p2Pts;
+    const p3Score = (alloc.part3_nb + alloc.part3_th + alloc.part3_vd + alloc.part3_vdc) * p3Pts;
+    const p4Score = (alloc.part4_nb + alloc.part4_th + alloc.part4_vd + alloc.part4_vdc) * p4Pts;
+    const totalPoints = Number((p1Score + p2Score + p3Score + p4Score).toFixed(2));
+
+    return {
+      ...row,
+      ...alloc,
+      totalPoints
+    };
+  });
+}
+
+export interface MatrixWarningItem {
+  id: string;
+  type: 'missing_part' | 'count_mismatch' | 'score_mismatch' | 'locked_has_data';
+  title: string;
+  message: string;
+  severity: 'error' | 'warning';
+  partKey?: 'part1' | 'part2' | 'part3' | 'part4';
+}
+
+/**
+ * Checks discrepancies between matrix allocation and target structure
+ */
+export function getMatrixMismatchWarnings(
+  matrix: MatrixRow[],
+  partConfigs: ExamPartConfigs
+): MatrixWarningItem[] {
+  const warnings: MatrixWarningItem[] = [];
+
+  const parts = [
+    { key: 'part1' as const, name: partConfigs.part1?.name || 'Phần I (TN 4 lựa chọn)', cfg: partConfigs.part1, defaultTarget: 12, defaultPts: 0.25 },
+    { key: 'part2' as const, name: partConfigs.part2?.name || 'Phần II (TN Đúng/Sai)', cfg: partConfigs.part2, defaultTarget: 4, defaultPts: 1.0 },
+    { key: 'part3' as const, name: partConfigs.part3?.name || 'Phần III (Trả lời ngắn)', cfg: partConfigs.part3, defaultTarget: 6, defaultPts: 0.5 },
+    { key: 'part4' as const, name: partConfigs.part4?.name || 'Phần IV (Tự luận)', cfg: partConfigs.part4, defaultTarget: 2, defaultPts: 1.0 },
+  ];
+
+  let calculatedGrandScore = 0;
+
+  parts.forEach(({ key, name, cfg, defaultTarget, defaultPts }) => {
+    const isEnabled = (cfg?.enabled !== false) && ((cfg?.targetQuestions ?? defaultTarget) > 0);
+    const targetQ = isEnabled ? (cfg?.targetQuestions ?? defaultTarget) : 0;
+    const pts = isEnabled ? (cfg?.pointsPerQuestion ?? defaultPts) : 0;
+
+    const currentCount = matrix.reduce((sum, r) => {
+      if (key === 'part1') return sum + (r.part1_nb || 0) + (r.part1_th || 0) + (r.part1_vd || 0) + (r.part1_vdc || 0);
+      if (key === 'part2') return sum + (r.part2_nb || 0) + (r.part2_th || 0) + (r.part2_vd || 0) + (r.part2_vdc || 0);
+      if (key === 'part3') return sum + (r.part3_nb || 0) + (r.part3_th || 0) + (r.part3_vd || 0) + (r.part3_vdc || 0);
+      if (key === 'part4') return sum + (r.part4_nb || 0) + (r.part4_th || 0) + (r.part4_vd || 0) + (r.part4_vdc || 0);
+      return sum;
+    }, 0);
+
+    if (isEnabled) {
+      calculatedGrandScore += currentCount * pts;
+      if (currentCount === 0 && targetQ > 0) {
+        warnings.push({
+          id: `missing_${key}`,
+          type: 'missing_part',
+          title: `Chưa nhập số câu cho ${name}`,
+          message: `Cấu hình mục tiêu là ${targetQ} câu (${(targetQ * pts).toFixed(2)}đ) nhưng ma trận đang có 0 câu (0.00đ).`,
+          severity: 'error',
+          partKey: key
+        });
+      } else if (currentCount !== targetQ) {
+        const diff = currentCount - targetQ;
+        warnings.push({
+          id: `mismatch_${key}`,
+          type: 'count_mismatch',
+          title: `Số câu ${name} chưa khớp mục tiêu`,
+          message: `Ma trận có ${currentCount} câu (${(currentCount * pts).toFixed(2)}đ), mục tiêu là ${targetQ} câu (${(targetQ * pts).toFixed(2)}đ). Đang ${diff > 0 ? `thừa ${diff}` : `thiếu ${Math.abs(diff)}`} câu.`,
+          severity: 'warning',
+          partKey: key
+        });
+      }
+    }
+  });
+
+  const grandDiff = Math.abs(calculatedGrandScore - 10.0);
+  if (grandDiff > 0.05 && matrix.length > 0) {
+    warnings.push({
+      id: 'score_grand_mismatch',
+      type: 'score_mismatch',
+      title: `Tổng điểm Ma trận (${calculatedGrandScore.toFixed(2)}đ) chưa đạt 10.0 điểm`,
+      message: `Chuẩn Bộ GD&ĐT quy định ma trận và đề kiểm tra phải có tổng điểm tích lũy chính xác 10.0 điểm.`,
+      severity: 'error'
+    });
+  }
+
+  return warnings;
 }

@@ -23,6 +23,8 @@ export function normalizeSubjectKey(subjectName: string): string {
 // MAIN DISPATCHER: BUILD UNIQUE QUESTIONS GUARANTEED
 // =========================================================================
 
+import { sanitizeMatrixForPartConfigs, autoBalanceMatrixToTarget } from './structurePresets';
+
 export function generateConsistentQuestionsFromMatrixAndSpec(
   header: ExamHeaderConfig,
   matrix: MatrixRow[],
@@ -32,147 +34,179 @@ export function generateConsistentQuestionsFromMatrixAndSpec(
   const questions: ExamQuestion[] = [];
 
   const partConfigs = header.partConfigs || {
-    part1: { name: 'Phần I (TN 4 lựa chọn)', pointsPerQuestion: 0.25, targetQuestions: 12 },
-    part2: { name: 'Phần II (Đúng/Sai)', pointsPerQuestion: 1.0, targetQuestions: 4 },
-    part3: { name: 'Phần III (Trả lời ngắn)', pointsPerQuestion: 0.5, targetQuestions: 6 },
-    part4: { name: 'Phần IV (Tự luận)', pointsPerQuestion: 1.0, targetQuestions: 0 },
+    part1: { name: 'Phần I (TN 4 lựa chọn)', pointsPerQuestion: 0.25, targetQuestions: 12, enabled: true },
+    part2: { name: 'Phần II (Đúng/Sai)', pointsPerQuestion: 1.0, targetQuestions: 4, enabled: true },
+    part3: { name: 'Phần III (Trả lời ngắn)', pointsPerQuestion: 0.5, targetQuestions: 6, enabled: true },
+    part4: { name: 'Phần IV (Tự luận)', pointsPerQuestion: 1.0, targetQuestions: 0, enabled: false },
   };
 
-  const p1Pts = partConfigs.part1?.pointsPerQuestion ?? 0.25;
-  const p2Pts = partConfigs.part2?.pointsPerQuestion ?? 1.0;
-  const p3Pts = partConfigs.part3?.pointsPerQuestion ?? 0.5;
-  const p4Pts = partConfigs.part4?.pointsPerQuestion ?? 1.0;
+  const isP1Active = (partConfigs.part1?.enabled !== false) && ((partConfigs.part1?.targetQuestions ?? 12) > 0);
+  const isP2Active = (partConfigs.part2?.enabled !== false) && ((partConfigs.part2?.targetQuestions ?? 4) > 0);
+  const isP3Active = (partConfigs.part3?.enabled !== false) && ((partConfigs.part3?.targetQuestions ?? 6) > 0);
+  const isP4Active = (partConfigs.part4?.enabled !== false) && ((partConfigs.part4?.targetQuestions ?? 2) > 0);
+
+  const p1Pts = isP1Active ? (partConfigs.part1?.pointsPerQuestion ?? 0.25) : 0;
+  const p2Pts = isP2Active ? (partConfigs.part2?.pointsPerQuestion ?? 1.0) : 0;
+  const p3Pts = isP3Active ? (partConfigs.part3?.pointsPerQuestion ?? 0.5) : 0;
+  const p4Pts = isP4Active ? (partConfigs.part4?.pointsPerQuestion ?? 1.0) : 0;
+
+  // First, clean matrix: strictly zero-out any locked parts so that disabled parts NEVER generate questions
+  let activeMatrix = sanitizeMatrixForPartConfigs(matrix, partConfigs);
+
+  // Check if an active part has 0 questions allocated in matrix, if so auto-balance that part across topics
+  const p1Count = activeMatrix.reduce((s, r) => s + r.part1_nb + r.part1_th + r.part1_vd + r.part1_vdc, 0);
+  const p2Count = activeMatrix.reduce((s, r) => s + r.part2_nb + r.part2_th + r.part2_vd + r.part2_vdc, 0);
+  const p3Count = activeMatrix.reduce((s, r) => s + r.part3_nb + r.part3_th + r.part3_vd + r.part3_vdc, 0);
+  const p4Count = activeMatrix.reduce((s, r) => s + r.part4_nb + r.part4_th + r.part4_vd + r.part4_vdc, 0);
+
+  const needsAutoFill = 
+    (isP1Active && p1Count === 0 && (partConfigs.part1?.targetQuestions ?? 0) > 0) ||
+    (isP2Active && p2Count === 0 && (partConfigs.part2?.targetQuestions ?? 0) > 0) ||
+    (isP3Active && p3Count === 0 && (partConfigs.part3?.targetQuestions ?? 0) > 0) ||
+    (isP4Active && p4Count === 0 && (partConfigs.part4?.targetQuestions ?? 0) > 0);
+
+  if (needsAutoFill && activeMatrix.length > 0) {
+    activeMatrix = autoBalanceMatrixToTarget(activeMatrix, partConfigs);
+  }
 
   // Track used signatures across the entire test paper to strictly prevent duplicate questions
   const usedContents = new Set<string>();
 
-  // 1. GENERATE PART I (Multiple Choice - numbering starts at 1)
-  let p1Order = 1;
-  matrix.forEach((row, rowIndex) => {
-    const spec = specification[rowIndex];
-    const rowCounts = [
-      { level: 'Nhận biết' as const, count: row.part1_nb || 0, obj: spec?.learningObjectives?.nb },
-      { level: 'Thông hiểu' as const, count: row.part1_th || 0, obj: spec?.learningObjectives?.th },
-      { level: 'Vận dụng' as const, count: row.part1_vd || 0, obj: spec?.learningObjectives?.vd },
-      { level: 'Vận dụng cao' as const, count: row.part1_vdc || 0, obj: spec?.learningObjectives?.vdc },
-    ];
+  // 1. GENERATE PART I (Multiple Choice - ONLY if Part 1 is active)
+  if (isP1Active) {
+    let p1Order = 1;
+    activeMatrix.forEach((row, rowIndex) => {
+      const spec = specification[rowIndex];
+      const rowCounts = [
+        { level: 'Nhận biết' as const, count: row.part1_nb || 0, obj: spec?.learningObjectives?.nb },
+        { level: 'Thông hiểu' as const, count: row.part1_th || 0, obj: spec?.learningObjectives?.th },
+        { level: 'Vận dụng' as const, count: row.part1_vd || 0, obj: spec?.learningObjectives?.vd },
+        { level: 'Vận dụng cao' as const, count: row.part1_vdc || 0, obj: spec?.learningObjectives?.vdc },
+      ];
 
-    rowCounts.forEach(({ level, count, obj }) => {
-      for (let i = 0; i < count; i++) {
-        const q = getUniqueMCQuestion({
-          subjectKey,
-          subjectName: header.subject,
-          grade: header.grade,
-          topic: row.topic,
-          unit: row.unit,
-          level,
-          objective: obj,
-          orderNumber: p1Order++,
-          points: p1Pts,
-          index: i,
-          rowIndex,
-          usedContents
-        });
-        questions.push(q);
-      }
+      rowCounts.forEach(({ level, count, obj }) => {
+        for (let i = 0; i < count; i++) {
+          const q = getUniqueMCQuestion({
+            subjectKey,
+            subjectName: header.subject,
+            grade: header.grade,
+            topic: row.topic,
+            unit: row.unit,
+            level,
+            objective: obj,
+            orderNumber: p1Order++,
+            points: p1Pts,
+            index: i,
+            rowIndex,
+            usedContents
+          });
+          questions.push(q);
+        }
+      });
     });
-  });
+  }
 
-  // 2. GENERATE PART II (True/False - numbering restarts at 1)
-  let p2Order = 1;
-  matrix.forEach((row, rowIndex) => {
-    const spec = specification[rowIndex];
-    const rowCounts = [
-      { level: 'Nhận biết' as const, count: row.part2_nb || 0, obj: spec?.learningObjectives?.nb },
-      { level: 'Thông hiểu' as const, count: row.part2_th || 0, obj: spec?.learningObjectives?.th },
-      { level: 'Vận dụng' as const, count: row.part2_vd || 0, obj: spec?.learningObjectives?.vd },
-      { level: 'Vận dụng cao' as const, count: row.part2_vdc || 0, obj: spec?.learningObjectives?.vdc },
-    ];
+  // 2. GENERATE PART II (True/False - ONLY if Part 2 is active)
+  if (isP2Active) {
+    let p2Order = 1;
+    activeMatrix.forEach((row, rowIndex) => {
+      const spec = specification[rowIndex];
+      const rowCounts = [
+        { level: 'Nhận biết' as const, count: row.part2_nb || 0, obj: spec?.learningObjectives?.nb },
+        { level: 'Thông hiểu' as const, count: row.part2_th || 0, obj: spec?.learningObjectives?.th },
+        { level: 'Vận dụng' as const, count: row.part2_vd || 0, obj: spec?.learningObjectives?.vd },
+        { level: 'Vận dụng cao' as const, count: row.part2_vdc || 0, obj: spec?.learningObjectives?.vdc },
+      ];
 
-    rowCounts.forEach(({ level, count, obj }) => {
-      for (let i = 0; i < count; i++) {
-        const q = getUniqueTFQuestion({
-          subjectKey,
-          subjectName: header.subject,
-          grade: header.grade,
-          topic: row.topic,
-          unit: row.unit,
-          level,
-          objective: obj,
-          orderNumber: p2Order++,
-          points: p2Pts,
-          index: i,
-          rowIndex,
-          usedContents
-        });
-        questions.push(q);
-      }
+      rowCounts.forEach(({ level, count, obj }) => {
+        for (let i = 0; i < count; i++) {
+          const q = getUniqueTFQuestion({
+            subjectKey,
+            subjectName: header.subject,
+            grade: header.grade,
+            topic: row.topic,
+            unit: row.unit,
+            level,
+            objective: obj,
+            orderNumber: p2Order++,
+            points: p2Pts,
+            index: i,
+            rowIndex,
+            usedContents
+          });
+          questions.push(q);
+        }
+      });
     });
-  });
+  }
 
-  // 3. GENERATE PART III (Short Answer - numbering restarts at 1)
-  let p3Order = 1;
-  matrix.forEach((row, rowIndex) => {
-    const spec = specification[rowIndex];
-    const rowCounts = [
-      { level: 'Nhận biết' as const, count: row.part3_nb || 0, obj: spec?.learningObjectives?.nb },
-      { level: 'Thông hiểu' as const, count: row.part3_th || 0, obj: spec?.learningObjectives?.th },
-      { level: 'Vận dụng' as const, count: row.part3_vd || 0, obj: spec?.learningObjectives?.vd },
-      { level: 'Vận dụng cao' as const, count: row.part3_vdc || 0, obj: spec?.learningObjectives?.vdc },
-    ];
+  // 3. GENERATE PART III (Short Answer - ONLY if Part 3 is active)
+  if (isP3Active) {
+    let p3Order = 1;
+    activeMatrix.forEach((row, rowIndex) => {
+      const spec = specification[rowIndex];
+      const rowCounts = [
+        { level: 'Nhận biết' as const, count: row.part3_nb || 0, obj: spec?.learningObjectives?.nb },
+        { level: 'Thông hiểu' as const, count: row.part3_th || 0, obj: spec?.learningObjectives?.th },
+        { level: 'Vận dụng' as const, count: row.part3_vd || 0, obj: spec?.learningObjectives?.vd },
+        { level: 'Vận dụng cao' as const, count: row.part3_vdc || 0, obj: spec?.learningObjectives?.vdc },
+      ];
 
-    rowCounts.forEach(({ level, count, obj }) => {
-      for (let i = 0; i < count; i++) {
-        const q = getUniqueShortQuestion({
-          subjectKey,
-          subjectName: header.subject,
-          grade: header.grade,
-          topic: row.topic,
-          unit: row.unit,
-          level,
-          objective: obj,
-          orderNumber: p3Order++,
-          points: p3Pts,
-          index: i,
-          rowIndex,
-          usedContents
-        });
-        questions.push(q);
-      }
+      rowCounts.forEach(({ level, count, obj }) => {
+        for (let i = 0; i < count; i++) {
+          const q = getUniqueShortQuestion({
+            subjectKey,
+            subjectName: header.subject,
+            grade: header.grade,
+            topic: row.topic,
+            unit: row.unit,
+            level,
+            objective: obj,
+            orderNumber: p3Order++,
+            points: p3Pts,
+            index: i,
+            rowIndex,
+            usedContents
+          });
+          questions.push(q);
+        }
+      });
     });
-  });
+  }
 
-  // 4. GENERATE PART IV (Essay - numbering restarts at 1)
-  let p4Order = 1;
-  matrix.forEach((row, rowIndex) => {
-    const spec = specification[rowIndex];
-    const rowCounts = [
-      { level: 'Nhận biết' as const, count: row.part4_nb || 0, obj: spec?.learningObjectives?.nb },
-      { level: 'Thông hiểu' as const, count: row.part4_th || 0, obj: spec?.learningObjectives?.th },
-      { level: 'Vận dụng' as const, count: row.part4_vd || 0, obj: spec?.learningObjectives?.vd },
-      { level: 'Vận dụng cao' as const, count: row.part4_vdc || 0, obj: spec?.learningObjectives?.vdc },
-    ];
+  // 4. GENERATE PART IV (Essay - ONLY if Part 4 is active)
+  if (isP4Active) {
+    let p4Order = 1;
+    activeMatrix.forEach((row, rowIndex) => {
+      const spec = specification[rowIndex];
+      const rowCounts = [
+        { level: 'Nhận biết' as const, count: row.part4_nb || 0, obj: spec?.learningObjectives?.nb },
+        { level: 'Thông hiểu' as const, count: row.part4_th || 0, obj: spec?.learningObjectives?.th },
+        { level: 'Vận dụng' as const, count: row.part4_vd || 0, obj: spec?.learningObjectives?.vd },
+        { level: 'Vận dụng cao' as const, count: row.part4_vdc || 0, obj: spec?.learningObjectives?.vdc },
+      ];
 
-    rowCounts.forEach(({ level, count, obj }) => {
-      for (let i = 0; i < count; i++) {
-        const q = getUniqueEssayQuestion({
-          subjectKey,
-          subjectName: header.subject,
-          grade: header.grade,
-          topic: row.topic,
-          unit: row.unit,
-          level,
-          objective: obj,
-          orderNumber: p4Order++,
-          points: p4Pts,
-          index: i,
-          rowIndex,
-          usedContents
-        });
-        questions.push(q);
-      }
+      rowCounts.forEach(({ level, count, obj }) => {
+        for (let i = 0; i < count; i++) {
+          const q = getUniqueEssayQuestion({
+            subjectKey,
+            subjectName: header.subject,
+            grade: header.grade,
+            topic: row.topic,
+            unit: row.unit,
+            level,
+            objective: obj,
+            orderNumber: p4Order++,
+            points: p4Pts,
+            index: i,
+            rowIndex,
+            usedContents
+          });
+          questions.push(q);
+        }
+      });
     });
-  });
+  }
 
   // Fallback if matrix was completely 0
   if (questions.length === 0) {
