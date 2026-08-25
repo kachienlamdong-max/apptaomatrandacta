@@ -1762,6 +1762,152 @@ export async function exportMatrixAndSpecToDocx(project: ExportProjectInput): Pr
   URL.revokeObjectURL(url);
 }
 
+// Export Compliance Audit Checklist to DOCX
+export async function exportComplianceReportToDocx(project: ExportProjectInput): Promise<void> {
+  const { header, sampleExamQuestions = [], matrix = [], specification = [] } = project;
+  const { performMoetComplianceAudit } = await import('./complianceAudit');
+  const report = performMoetComplianceAudit(header, sampleExamQuestions, matrix, specification);
+
+  const docParagraphs: (Paragraph | Table)[] = [];
+
+  // Header Title
+  docParagraphs.push(
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      children: [
+        new TextRun({
+          text: `BẢNG KIỂM TRA ĐÁNH GIÁ CHUẨN KỸ THUẬT ĐỀ THI`,
+          bold: true,
+          font: 'Times New Roman',
+          size: 28,
+          color: '1E3A8A'
+        }),
+      ],
+      spacing: { before: 100, after: 60 },
+    })
+  );
+  docParagraphs.push(
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      children: [
+        new TextRun({
+          text: `(Thẩm định theo Quy chuẩn Chương trình GDPT 2018 - Bộ Giáo dục và Đào tạo)`,
+          italics: true,
+          font: 'Times New Roman',
+          size: 22,
+        }),
+      ],
+      spacing: { after: 200 },
+    })
+  );
+
+  // Info Block
+  docParagraphs.push(
+    new Paragraph({
+      children: [
+        new TextRun({ text: `Môn: `, bold: true, font: 'Times New Roman', size: 22 }),
+        new TextRun({ text: `${header.subject || 'Địa lí'} - Khối ${header.grade || '12'} | `, font: 'Times New Roman', size: 22 }),
+        new TextRun({ text: `Kỳ thi: `, bold: true, font: 'Times New Roman', size: 22 }),
+        new TextRun({ text: `${header.examTitle || 'Kiểm tra định kỳ'} | `, font: 'Times New Roman', size: 22 }),
+        new TextRun({ text: `Điểm đánh giá tuân thủ: `, bold: true, font: 'Times New Roman', size: 22 }),
+        new TextRun({ text: `${report.scorePercentage}% (${report.overallStatus === 'excellent' ? 'XUẤT SẮC - ĐẠT CHUẨN 100%' : 'ĐẠT YÊU CẦU'})`, bold: true, color: '15803D', font: 'Times New Roman', size: 22 }),
+      ],
+      spacing: { after: 180 },
+    })
+  );
+
+  // Table of Audit Criteria
+  const tableRows: TableRow[] = [
+    new TableRow({
+      tableHeader: true,
+      children: [
+        new TableCell({
+          width: { size: 600, type: WidthType.DXA },
+          shading: { fill: '1E3A8A' },
+          children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'STT', bold: true, color: 'FFFFFF', font: 'Times New Roman', size: 20 })] })],
+        }),
+        new TableCell({
+          width: { size: 3000, type: WidthType.DXA },
+          shading: { fill: '1E3A8A' },
+          children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'Tiêu chí đánh giá', bold: true, color: 'FFFFFF', font: 'Times New Roman', size: 20 })] })],
+        }),
+        new TableCell({
+          width: { size: 1400, type: WidthType.DXA },
+          shading: { fill: '1E3A8A' },
+          children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'Kết quả', bold: true, color: 'FFFFFF', font: 'Times New Roman', size: 20 })] })],
+        }),
+        new TableCell({
+          width: { size: 4500, type: WidthType.DXA },
+          shading: { fill: '1E3A8A' },
+          children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'Chi tiết thẩm định & Khuyến nghị', bold: true, color: 'FFFFFF', font: 'Times New Roman', size: 20 })] })],
+        }),
+      ],
+    }),
+  ];
+
+  report.items.forEach((item, idx) => {
+    const statusText = item.status === 'pass' ? 'ĐẠT CHUẨN' : item.status === 'warning' ? 'LƯU Ý' : 'CHƯA ĐẠT';
+    const statusColor = item.status === 'pass' ? '15803D' : item.status === 'warning' ? 'B45309' : 'B91C1C';
+
+    tableRows.push(
+      new TableRow({
+        children: [
+          new TableCell({
+            children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: `${idx + 1}`, font: 'Times New Roman', size: 20 })] })],
+          }),
+          new TableCell({
+            children: [
+              new Paragraph({ children: [new TextRun({ text: item.title, bold: true, font: 'Times New Roman', size: 20 })] }),
+              new Paragraph({ children: [new TextRun({ text: item.description, italics: true, color: '4B5563', font: 'Times New Roman', size: 18 })] }),
+            ],
+          }),
+          new TableCell({
+            children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: statusText, bold: true, color: statusColor, font: 'Times New Roman', size: 20 })] })],
+          }),
+          new TableCell({
+            children: [
+              new Paragraph({ children: [new TextRun({ text: item.details, font: 'Times New Roman', size: 20 })] }),
+              item.suggestion ? new Paragraph({ children: [new TextRun({ text: `Khuyến nghị: ${item.suggestion}`, italics: true, color: '2563EB', font: 'Times New Roman', size: 18 })] }) : new Paragraph({ text: '' }),
+            ],
+          }),
+        ],
+      })
+    );
+  });
+
+  const auditTable = new Table({
+    width: { size: 9500, type: WidthType.DXA },
+    alignment: AlignmentType.CENTER,
+    rows: tableRows,
+  });
+
+  docParagraphs.push(auditTable);
+
+  const doc = new Document({
+    sections: [
+      {
+        properties: {
+          page: {
+            margin: { top: 900, bottom: 900, left: 900, right: 900 },
+          },
+        },
+        children: docParagraphs,
+      },
+    ],
+  });
+
+  const blob = await Packer.toBlob(doc);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const fileName = `Bang-kiem-tra-chuan-Bộ-GDDT-${project.header.subject.replace(/\s+/g, '-')}-${project.header.grade.replace(/\s+/g, '-')}.docx`;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 // Download Full Exam DOCX trigger
 export async function exportFullExamToDocx(project: ExportProjectInput): Promise<void> {
   const blob = await exportExamToDocx(project);

@@ -12,14 +12,17 @@ import {
   Table,
   BookOpen,
   FileSpreadsheet,
-  Files
+  Files,
+  ShieldCheck,
+  FileCheck
 } from 'lucide-react';
 import { ExamProject } from '../../types';
 import { 
   exportFullExamToDocx, 
   exportAllVariantsOnlyToDocx, 
   exportSingleVariantToDocx,
-  exportMatrixAndSpecToDocx 
+  exportMatrixAndSpecToDocx,
+  exportComplianceReportToDocx
 } from '../../utils/docxExport';
 import { generateShuffledExamVariants } from '../../utils/shuffler';
 
@@ -90,6 +93,19 @@ export const ExportStep: React.FC<ExportStepProps> = ({
       await exportMatrixAndSpecToDocx(project);
     } catch (err) {
       console.error('Error exporting matrix & spec:', err);
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const handleExportChecklistDocx = async () => {
+    setDownloading(true);
+    try {
+      await exportComplianceReportToDocx(project);
+      setDownloadSuccess(true);
+      setTimeout(() => setDownloadSuccess(false), 3000);
+    } catch (err) {
+      console.error('Error exporting checklist DOCX:', err);
     } finally {
       setDownloading(false);
     }
@@ -231,7 +247,7 @@ export const ExportStep: React.FC<ExportStepProps> = ({
         </div>
 
         {/* Option 4: Direct Print / PDF */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4 flex flex-col justify-between hover:border-indigo-300 transition-all">
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4 flex flex-col justify-between hover:border-amber-300 transition-all">
           <div className="space-y-3">
             <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600">
               <Printer className="w-5 h-5" />
@@ -252,6 +268,36 @@ export const ExportStep: React.FC<ExportStepProps> = ({
             <Printer className="w-4 h-4" />
             <span>Mở Trang In / Lưu PDF</span>
           </button>
+        </div>
+
+        {/* Option 5: Compliance Audit Checklist DOCX */}
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4 flex flex-col justify-between hover:border-emerald-300 transition-all md:col-span-2 lg:col-span-4">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 shrink-0">
+                <ShieldCheck className="w-6 h-6" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+                  <span>Bảng Kiểm Tra & Đánh Giá Chất Lượng Kỹ Thuật Đề Thi (.docx)</span>
+                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full uppercase">Chuẩn GDPT 2018</span>
+                </h3>
+                <p className="text-xs text-slate-600 leading-relaxed max-w-3xl">
+                  Xuất văn bản Bảng kiểm đánh giá toàn bộ 4 phần của đề thi theo bảng kiểm chuẩn của Bộ Giáo dục và Đào tạo, phân tích chi tiết mức độ Biết, Hiểu, Vận dụng, tính độc lập của các nhận định và các khuyến nghị chuyên môn.
+                </p>
+              </div>
+            </div>
+
+            <button
+              id="btn-download-checklist-docx"
+              onClick={handleExportChecklistDocx}
+              disabled={downloading}
+              className="inline-flex items-center gap-2 py-2.5 px-5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs transition-colors shadow-sm shrink-0"
+            >
+              <FileCheck className="w-4 h-4" />
+              <span>Tải Bảng Kiểm Thẩm Định (.docx)</span>
+            </button>
+          </div>
         </div>
 
       </div>

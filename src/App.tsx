@@ -451,6 +451,8 @@ export default function App() {
             isAiGeneratingExam={isAiGeneratingExam}
             onSyncQuestionsFromMatrix={() => handleSyncQuestionsFromMatrix()}
             onGenerateAiExam={handleGenerateAiExam}
+            matrix={project.matrix}
+            specification={project.specification}
           />
         )}
 

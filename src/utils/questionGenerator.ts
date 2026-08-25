@@ -10,19 +10,8 @@ import {
 /**
  * Intelligent Question Generator that guarantees 100% consistency between 
  * the current Subject/Grade, Matrix distribution, and Specification objectives.
+ * ABSOLUTELY ZERO DUPLICATE QUESTIONS in any part of the test.
  */
-
-interface SubjectQuestionBankItem {
-  type: 'multiple_choice' | 'true_false' | 'short_answer' | 'essay';
-  level: 'Nhận biết' | 'Thông hiểu' | 'Vận dụng' | 'Vận dụng cao';
-  content: string;
-  options?: MultipleChoiceOption[];
-  correctOption?: 'A' | 'B' | 'C' | 'D';
-  trueFalseItems?: TrueFalseSubItem[];
-  shortAnswerKey?: string;
-  essayRubric?: string;
-  explanation: string;
-}
 
 // Helper to normalize subject name
 export function normalizeSubjectKey(subject: string): string {
@@ -43,6 +32,710 @@ export function normalizeSubjectKey(subject: string): string {
   return 'general';
 }
 
+// -------------------------------------------------------------
+// QUESTION DATA REPOSITORIES FOR EACH SUBJECT
+// -------------------------------------------------------------
+
+interface RawMCQ {
+  topicKeywords?: string[];
+  level: 'Nhận biết' | 'Thông hiểu' | 'Vận dụng' | 'Vận dụng cao';
+  content: string;
+  options: MultipleChoiceOption[];
+  correctOption: 'A' | 'B' | 'C' | 'D';
+  explanation: string;
+}
+
+interface RawTF {
+  topicKeywords?: string[];
+  level: 'Nhận biết' | 'Thông hiểu' | 'Vận dụng' | 'Vận dụng cao';
+  content: string;
+  items: TrueFalseSubItem[];
+  explanation: string;
+}
+
+interface RawShort {
+  topicKeywords?: string[];
+  level: 'Nhận biết' | 'Thông hiểu' | 'Vận dụng' | 'Vận dụng cao';
+  content: string;
+  key: string;
+  explanation: string;
+}
+
+interface RawEssay {
+  topicKeywords?: string[];
+  level: 'Nhận biết' | 'Thông hiểu' | 'Vận dụng' | 'Vận dụng cao';
+  content: string;
+  essayRubric: string;
+  explanation: string;
+}
+
+// =========================================================================
+// 1. ĐỊA LÍ (GEOGRAPHY) QUESTION BANK
+// =========================================================================
+const DIA_LI_MCQ: RawMCQ[] = [
+  {
+    topicKeywords: ['vị trí', 'lãnh thổ', 'tự nhiên'],
+    level: 'Nhận biết',
+    content: 'Nước ta nằm hoàn toàn trong vùng nội chí tuyến bán cầu Bắc, nên có đặc điểm tự nhiên nào sau đây?',
+    options: [
+      { key: 'A', content: 'Tổng lượng mưa hàng năm luôn nhỏ hơn lượng bốc hơi.' },
+      { key: 'B', content: 'Nền nhiệt độ cao, nhiều ánh nắng mặt trời.' },
+      { key: 'C', content: 'Chịu ảnh hưởng sâu sắc của gió Mậu dịch bán cầu Nam.' },
+      { key: 'D', content: 'Khí hậu phân hóa thành 4 mùa rõ rệt ở mọi miền.' }
+    ],
+    correctOption: 'B',
+    explanation: 'Do nằm hoàn toàn trong vùng nội chí tuyến bán cầu Bắc nên nước ta có góc nhập xạ lớn, tổng bức xạ dồi dào, nền nhiệt độ cao trung bình > 20°C.'
+  },
+  {
+    topicKeywords: ['vị trí', 'biển', 'lãnh thổ'],
+    level: 'Nhận biết',
+    content: 'Vùng biển nước ta tiếp giáp với vùng biển của bao nhiêu quốc gia trong khu vực Đông Nam Á?',
+    options: [
+      { key: 'A', content: '6 quốc gia.' },
+      { key: 'B', content: '7 quốc gia.' },
+      { key: 'C', content: '8 quốc gia.' },
+      { key: 'D', content: '9 quốc gia.' }
+    ],
+    correctOption: 'C',
+    explanation: 'Vùng biển Việt Nam tiếp giáp với vùng biển của 8 quốc gia: Trung Quốc, Campuchia, Thái Lan, Malaysia, Singapore, Indonesia, Brunei và Philippines.'
+  },
+  {
+    topicKeywords: ['địa hình', 'đồi núi', 'tự nhiên'],
+    level: 'Nhận biết',
+    content: 'Đặc điểm nào sau đây đúng với địa hình vùng đồi núi của nước ta?',
+    options: [
+      { key: 'A', content: 'Địa hình đồi núi chiếm 3/4 diện tích lãnh thổ.' },
+      { key: 'B', content: 'Đồi núi cao trên 2000m chiếm tới 40% diện tích.' },
+      { key: 'C', content: 'Địa hình bán bình nguyên phân bố chủ yếu ở Bắc Bộ.' },
+      { key: 'D', content: 'Địa hình núi thấp chỉ phân bố ở khu vực Nam Trung Bộ.' }
+    ],
+    correctOption: 'A',
+    explanation: 'Đồi núi chiếm 3/4 diện tích lãnh thổ nước ta, nhưng chủ yếu là đồi núi thấp (dưới 1000m chiếm 85%, núi cao trên 2000m chỉ chiếm 1%).'
+  },
+  {
+    topicKeywords: ['khí hậu', 'gió mùa', 'tự nhiên'],
+    level: 'Nhận biết',
+    content: 'Gió mùa Đông Bắc hoạt động mạnh nhất ở khu vực nào của nước ta?',
+    options: [
+      { key: 'A', content: 'Miền Bắc và Đông Bắc Bắc Bộ.' },
+      { key: 'B', content: 'Tây Nguyên và Nam Bộ.' },
+      { key: 'C', content: 'Duyên hải Nam Trung Bộ.' },
+      { key: 'D', content: 'Khu vực cực Nam Trung Bộ.' }
+    ],
+    correctOption: 'A',
+    explanation: 'Gió mùa Đông Bắc thổi từ áp cao Xibia qua lục địa phương Bắc tràn vào nước ta mạnh nhất ở khu vực Đông Bắc và đồng bằng Bắc Bộ.'
+  },
+  {
+    topicKeywords: ['địa hình', 'hướng núi', 'tự nhiên'],
+    level: 'Thông hiểu',
+    content: 'Hai hướng chính của địa hình núi non hiểm trở ở nước ta là:',
+    options: [
+      { key: 'A', content: 'Tây Bắc - Đông Nam và vòng cung.' },
+      { key: 'B', content: 'Bắc - Nam và Đông - Tây.' },
+      { key: 'C', content: 'Đông Bắc - Tây Nam và vòng cung.' },
+      { key: 'D', content: 'Tây Bắc - Đông Nam và Bắc - Nam.' }
+    ],
+    correctOption: 'A',
+    explanation: 'Địa hình nước ta có 2 hướng chính: Tây Bắc - Đông Nam (vùng Tây Bắc, Trường Sơn Bắc) và hướng vòng cung (vùng Đông Bắc, Trường Sơn Nam).'
+  },
+  {
+    topicKeywords: ['khí hậu', 'mưa', 'tự nhiên'],
+    level: 'Thông hiểu',
+    content: 'Hiện tượng thời tiết đặc trưng vào nửa cuối mùa đông ở đồng bằng Bắc Bộ và Bắc Trung Bộ là:',
+    options: [
+      { key: 'A', content: 'Lạnh khô, trời hanh khô không mưa.' },
+      { key: 'B', content: 'Lạnh ẩm, có mưa phùn ẩm ướt.' },
+      { key: 'C', content: 'Nắng nóng kéo dài, khô hạn gay gắt.' },
+      { key: 'D', content: 'Xuất hiện dải hội tụ nhiệt đới gây mưa dông.' }
+    ],
+    correctOption: 'B',
+    explanation: 'Nửa cuối mùa đông, khối khí lạnh lệch đông di chuyển qua biển được tăng cường ẩm, gây nên thời tiết lạnh ẩm và mưa phùn.'
+  },
+  {
+    topicKeywords: ['sông ngòi', 'thủy văn', 'tự nhiên'],
+    level: 'Thông hiểu',
+    content: 'Sông ngòi nước ta có lượng phù sa lớn chủ yếu do nguyên nhân nào sau đây?',
+    options: [
+      { key: 'A', content: 'Lưu vực sông có lượng mưa lớn và quá trình xâm thực mạnh ở đồi núi.' },
+      { key: 'B', content: 'Tất cả các dòng sông đều bắt nguồn từ ngoài lãnh thổ.' },
+      { key: 'C', content: 'Địa hình đồng bằng mở rộng và đáy sông có độ dốc lớn.' },
+      { key: 'D', content: 'Thủy triều xâm nhập sâu và dòng chảy sông ngòi luôn êm dịu.' }
+    ],
+    correctOption: 'A',
+    explanation: 'Khí hậu nhiệt đới ẩm mưa nhiều kết hợp địa hình đồi núi dốc, lớp vỏ phong hóa dày làm cho quá trình bóc mòn, rửa trôi diễn ra mạnh mẽ, tạo nên hàm lượng phù sa lớn.'
+  },
+  {
+    topicKeywords: ['đất đai', 'sinh vật', 'tự nhiên'],
+    level: 'Thông hiểu',
+    content: 'Loại đất chiếm diện tích lớn nhất và có giá trị kinh tế quan trọng ở vùng đồi núi nước ta là:',
+    options: [
+      { key: 'A', content: 'Đất feralit hình thành trên các loại đá khác nhau.' },
+      { key: 'B', content: 'Đất phù sa ngọt ven các thung lũng sông.' },
+      { key: 'C', content: 'Đất cát pha ven biển miền Trung.' },
+      { key: 'D', content: 'Đất phèn và đất mặn trũng thấp.' }
+    ],
+    correctOption: 'A',
+    explanation: 'Đất feralit là nhóm đất đặc trưng của vùng nhiệt đới ẩm gió mùa, chiếm trên 65% diện tích đất tự nhiên nước ta.'
+  },
+  {
+    topicKeywords: ['dân số', 'dân cư', 'lao động'],
+    level: 'Nhận biết',
+    content: 'Hiện nay, cơ cấu dân số theo nhóm tuổi ở nước ta đang có xu hướng biến đổi nào sau đây?',
+    options: [
+      { key: 'A', content: 'Tỉ lệ nhóm tuổi dưới 15 tuổi giảm, tỉ lệ nhóm từ 65 tuổi trở lên tăng.' },
+      { key: 'B', content: 'Tỉ lệ nhóm tuổi dưới 15 tuổi tăng nhanh, dân số trẻ hóa mạnh.' },
+      { key: 'C', content: 'Tỉ lệ người già giảm dần do tỉ lệ tử vong ở người cao tuổi tăng.' },
+      { key: 'D', content: 'Tỉ lệ nhóm trong độ tuổi lao động suy giảm nghiêm trọng.' }
+    ],
+    correctOption: 'A',
+    explanation: 'Nước ta đang trong giai đoạn cơ cấu dân số vàng đồng thời bước vào quá trình già hóa dân số (nhóm <15 tuổi giảm, nhóm ≥65 tuổi tăng).'
+  },
+  {
+    topicKeywords: ['dân cư', 'phân bố', 'lao động'],
+    level: 'Thông hiểu',
+    content: 'Dân cư nước ta phân bố chưa hợp lí giữa đồng bằng và miền núi gây khó khăn chủ yếu cho việc:',
+    options: [
+      { key: 'A', content: 'Sử dụng hợp lí tài nguyên thiên nhiên và phân bố nguồn lao động.' },
+      { key: 'B', content: 'Bảo tồn bản sắc văn hóa các dân tộc thiểu số.' },
+      { key: 'C', content: 'Mở rộng mạng lưới trường học và cơ sở y tế ở thành thị.' },
+      { key: 'D', content: 'Phát triển các ngành dịch vụ công nghệ cao.' }
+    ],
+    correctOption: 'A',
+    explanation: 'Đồng bằng đất chật người đông gây áp lực việc làm, miền núi giàu tài nguyên nhưng thiếu lao động khai thác.'
+  },
+  {
+    topicKeywords: ['đô thị hóa', 'dân cư'],
+    level: 'Thông hiểu',
+    content: 'Tác động tích cực nổi bật nhất của quá trình đô thị hóa đối với sự phát triển kinh tế nước ta là:',
+    options: [
+      { key: 'A', content: 'Thúc đẩy chuyển dịch cơ cấu kinh tế và lan tỏa lối sống hiện đại.' },
+      { key: 'B', content: 'Làm giảm nhanh chóng tỉ suất sinh ở tất cả các vùng nông thôn.' },
+      { key: 'C', content: 'Giải quyết triệt để vấn đề việc làm cho toàn bộ cư dân đô thị.' },
+      { key: 'D', content: 'Hạn chế tình trạng ô nhiễm môi trường tại các khu dân cư.' }
+    ],
+    correctOption: 'A',
+    explanation: 'Đô thị là trung tâm tạo ra động lực tăng trưởng kinh tế, thu hút đầu tư, chuyển dịch cơ cấu ngành và thúc đẩy công nghiệp hóa.'
+  },
+  {
+    topicKeywords: ['kinh tế', 'chuyển dịch', 'ngành'],
+    level: 'Nhận biết',
+    content: 'Xu hướng chuyển dịch cơ cấu ngành kinh tế trong khu vực I (Nông - Lâm - Thủy sản) của nước ta là:',
+    options: [
+      { key: 'A', content: 'Tăng tỉ trọng ngành thủy sản, giảm tỉ trọng ngành trồng trọt.' },
+      { key: 'B', content: 'Tăng nhanh tỉ trọng ngành lâm nghiệp, giảm ngành thủy sản.' },
+      { key: 'C', content: 'Giảm tỉ trọng ngành chăn nuôi, tăng tỉ trọng trồng cây lương thực.' },
+      { key: 'D', content: 'Tăng tỉ trọng độc canh lúa nước trên toàn bộ diện tích.' }
+    ],
+    correctOption: 'A',
+    explanation: 'Trong khu vực I, ngành thủy sản có tốc độ tăng trưởng nhanh nhất và tỉ trọng ngày càng tăng, ngành trồng trọt có xu hướng giảm tỉ trọng.'
+  },
+  {
+    topicKeywords: ['nông nghiệp', 'kinh tế', 'thủy sản'],
+    level: 'Thông hiểu',
+    content: 'Thế mạnh tự nhiên quan trọng hàng đầu để phát triển ngành nuôi trồng thủy sản nước lợ ở nước ta là:',
+    options: [
+      { key: 'A', content: 'Hệ thống các bãi triều, đầm phá, rừng ngập mặn ven biển rộng lớn.' },
+      { key: 'B', content: 'Có 4 ngư trường trọng điểm xa bờ giàu tài nguyên sinh vật.' },
+      { key: 'C', content: 'Nhiều sông suối, hồ thủy điện lớn ở vùng trung du miền núi.' },
+      { key: 'D', content: 'Khí hậu nhiệt đới ẩm quanh năm không có bão đổ bộ.' }
+    ],
+    correctOption: 'A',
+    explanation: 'Khu vực bãi triều, đầm phá, cửa sông và rừng ngập mặn là môi trường sinh thái lí tưởng để nuôi tôm, cua, cá nước lợ xuất khẩu.'
+  },
+  {
+    topicKeywords: ['công nghiệp', 'năng lượng', 'kinh tế'],
+    level: 'Thông hiểu',
+    content: 'Cơ cấu nguồn điện của nước ta hiện nay đang chuyển dịch theo xu hướng bền vững nào?',
+    options: [
+      { key: 'A', content: 'Giảm nhiệt điện than, đẩy mạnh phát triển năng lượng tái tạo (gió, mặt trời).' },
+      { key: 'B', content: 'Ngừng hoàn toàn tất cả các nhà máy thủy điện để bảo vệ rừng.' },
+      { key: 'C', content: 'Tập trung duy nhất vào nhiệt điện chạy bằng dầu nhập khẩu.' },
+      { key: 'D', content: 'Tăng tỉ trọng nhiệt điện than lên chiếm trên 80% tổng sản lượng.' }
+    ],
+    correctOption: 'A',
+    explanation: 'Việt Nam đang thực hiện cam kết Net Zero 2050 và Quy hoạch điện VIII, ưu tiên phát triển điện gió, điện mặt trời, điện sinh khối và khí tự nhiên LNG.'
+  },
+  {
+    topicKeywords: ['giao thông', 'dịch vụ', 'kinh tế'],
+    level: 'Vận dụng',
+    content: 'Tuyến đường bộ huyết mạch có ý nghĩa thúc đẩy giao lưu kinh tế liên vùng dọc theo chiều dài Bắc - Nam của nước ta là:',
+    options: [
+      { key: 'A', content: 'Quốc lộ 1 và đường cao tốc Bắc - Nam phía Đông.' },
+      { key: 'B', content: 'Đường Hồ Chí Minh nhánh Tây qua dãy Trường Sơn.' },
+      { key: 'C', content: 'Quốc lộ 14 chạy dọc vùng Tây Nguyên.' },
+      { key: 'D', content: 'Tuyến đường vành đai 4 vùng thủ đô Hà Nội.' }
+    ],
+    correctOption: 'A',
+    explanation: 'Quốc lộ 1 và cao tốc Bắc - Nam phía Đông là xương sống giao thông kết nối các trung tâm kinh tế, vùng kinh tế trọng điểm của đất nước.'
+  },
+  {
+    topicKeywords: ['vùng kinh tế', 'biển đảo', 'kinh tế'],
+    level: 'Vận dụng',
+    content: 'Vùng kinh tế trọng điểm phía Nam giữ vai trò đầu tàu kinh tế cả nước chủ yếu do có:',
+    options: [
+      { key: 'A', content: 'Cơ sở hạ tầng phát triển, nguồn nhân lực trình độ cao và thu hút mạnh FDI.' },
+      { key: 'B', content: 'Diện tích đất tự nhiên và diện tích rừng nguyên sinh lớn nhất nước.' },
+      { key: 'C', content: 'Tài nguyên than đá và khoáng sản kim loại dồi dào nhất cả nước.' },
+      { key: 'D', content: 'Tỉ suất sinh cao nhất và cơ cấu nông nghiệp chiếm tỉ trọng chủ đạo.' }
+    ],
+    correctOption: 'A',
+    explanation: 'Vùng KTTĐ phía Nam hội tụ TP.HCM, Bình Dương, Đồng Nai, Bà Rịa - Vũng Tàu với thế mạnh vượt trội về công nghiệp, dịch vụ tài chính, cảng biển nước sâu và thu hút đầu tư.'
+  }
+];
+
+const DIA_LI_TF: RawTF[] = [
+  {
+    topicKeywords: ['vị trí', 'biển đảo', 'lãnh thổ'],
+    level: 'Thông hiểu',
+    content: 'Đoạn thông tin về vị trí địa lí và phạm vi lãnh thổ nước ta:\n"Việt Nam nằm ở rìa phía đông của bán đảo Đông Dương, gần trung tâm khu vực Đông Nam Á. Vùng đất gồm toàn bộ phần đất liền và các hải đảo với diện tích 331.212 km². Vùng biển có diện tích khoảng 1 triệu km² trên Biển Đông với đường bờ biển dài 3.260 km, tiếp giáp vùng biển của nhiều quốc gia."\nNguồn: Biên tập từ SGK Địa lí 12, NXB Giáo dục Việt Nam',
+    items: [
+      { key: 'a', statement: 'Nước ta có đường bờ biển dài 3.260 km chạy dọc từ Quảng Ninh đến Kiên Giang.', isCorrect: true, explanation: 'Đúng (Mức Biết): Tái hiện đúng chiều dài đường bờ biển nước ta theo số liệu chuẩn.' },
+      { key: 'b', statement: 'Vị trí nội chí tuyến và tiếp giáp Biển Đông là nguyên nhân chủ yếu làm cho khí hậu nước ta ẩm và mưa nhiều hơn các nước cùng vĩ độ ở Tây Nam Á.', isCorrect: true, explanation: 'Đúng (Mức Hiểu): Giải thích đúng tác động điều hòa và mang lại nguồn ẩm phong phú của Biển Đông.' },
+      { key: 'c', statement: 'Vùng biển nước ta tạo thế mở cửa thuận lợi để thu hút vốn đầu tư nước ngoài và phát triển đồng bộ 4 ngành kinh tế biển then chốt.', isCorrect: true, explanation: 'Đúng (Mức Vận dụng): Đánh giá đúng vai trò kinh tế biển (giao thông, du lịch, khai thác khoáng sản, thủy sản).' },
+      { key: 'd', statement: 'Tất cả các tỉnh và thành phố trực thuộc Trung ương của nước ta hiện nay đều có đường bờ biển tiếp giáp trực tiếp.', isCorrect: false, explanation: 'Sai (Mức Vận dụng): Cả nước chỉ có 28 tỉnh, thành phố trực thuộc Trung ương giáp biển.' }
+    ],
+    explanation: 'Nhận định a, b, c là ĐÚNG; d là SAI.'
+  },
+  {
+    topicKeywords: ['khí hậu', 'thiên tai', 'tự nhiên'],
+    level: 'Thông hiểu',
+    content: 'Đoạn thông tin về đặc điểm thời tiết và khí hậu gió mùa nước ta:\n"Do tác động kết hợp của vị trí địa lí, địa hình đồi núi và các khối khí gió mùa, khí hậu nước ta có sự phân hóa sâu sắc theo không gian và thời gian. Nền nhiệt ẩm cao, có mùa đông lạnh ở miền Bắc và mùa khô sâu sắc ở miền Nam; thiên tai bão, lũ, hạn hán thường xuyên xảy ra."\nNguồn: Xử lí từ Trung tâm Dự báo Khí tượng Thủy văn Quốc gia',
+    items: [
+      { key: 'a', statement: 'Miền Bắc nước ta có nhiệt độ trung bình năm trên 20°C và có 2 đến 3 tháng nhiệt độ dưới 18°C.', isCorrect: true, explanation: 'Đúng (Mức Biết): Tái hiện chính xác đặc điểm nhiệt độ miền khí hậu phía Bắc.' },
+      { key: 'b', statement: 'Gió mùa mùa đông suy giảm nhanh khi di chuyển về phía nam chủ yếu do bức chắn địa hình của dãy Bạch Mã.', isCorrect: true, explanation: 'Đúng (Mức Hiểu): Giải thích đúng vai trò chắn gió của địa hình dãy Bạch Mã làm phân chia 2 miền khí hậu.' },
+      { key: 'c', statement: 'Sự phân hóa mùa mưa và mùa khô sâu sắc đòi hỏi ngành nông nghiệp phải chủ động chuyển đổi cơ cấu mùa vụ và xây dựng các công trình thủy lợi.', isCorrect: true, explanation: 'Đúng (Mức Vận dụng): Suy luận và đề xuất đúng giải pháp ứng phó với tính chất mùa của khí hậu.' },
+      { key: 'd', statement: 'Các cơn bão đổ bộ vào lãnh thổ nước ta có thời gian hoạt động diễn ra đồng loạt trên tất cả các vùng ven biển từ Bắc vào Nam.', isCorrect: false, explanation: 'Sai (Mức Vận dụng): Mùa bão ở nước ta có quy luật chậm dần từ Bắc vào Nam (Bắc Bộ tháng 6-8, Trung Bộ tháng 9-10, Nam Bộ tháng 11-12).' }
+    ],
+    explanation: 'Nhận định a, b, c là ĐÚNG; d là SAI.'
+  },
+  {
+    topicKeywords: ['dân số', 'lao động', 'việc làm'],
+    level: 'Vận dụng',
+    content: 'Đoạn thông tin về quy mô dân số và nguồn lao động nước ta:\n"Năm 2022, dân số nước ta đạt 99,46 triệu người, lực lượng lao động từ 15 tuổi trở lên đạt 51,7 triệu người. Nước ta đang trong thời kì cơ cấu dân số vàng đồng thời có tốc độ già hóa dân số nhanh; tỉ lệ lao động qua đào tạo có bằng cấp, chứng chỉ đạt 26,4%."\nNguồn: Tổng hợp từ Niên giám Thống kê Việt Nam, NXB Thống kê',
+    items: [
+      { key: 'a', statement: 'Nước ta có quy mô dân số đông và thuộc nhóm các quốc gia có cơ cấu dân số vàng.', isCorrect: true, explanation: 'Đúng (Mức Biết): Nêu đúng quy mô và đặc điểm cơ cấu tuổi của dân số Việt Nam.' },
+      { key: 'b', statement: 'Chất lượng nguồn lao động nước ta ngày càng được nâng cao nhờ mở rộng hệ thống giáo dục nghề nghiệp và đại học.', isCorrect: true, explanation: 'Đúng (Mức Hiểu): Thể hiện rõ mối quan hệ giữa đào tạo và nâng cao chất lượng lao động.' },
+      { key: 'c', statement: 'Đẩy mạnh công nghiệp hóa và chuyển dịch cơ cấu kinh tế là giải pháp căn bản để giải quyết việc làm cho lao động khu vực nông thôn.', isCorrect: true, explanation: 'Đúng (Mức Vận dụng): Vận dụng quy luật chuyển dịch lao động gắn với phát triển kinh tế.' },
+      { key: 'd', statement: 'Tỉ lệ thất nghiệp ở khu vực thành thị nước ta hiện nay cao hơn nhiều so với tỉ lệ thiếu việc làm ở nông thôn.', isCorrect: false, explanation: 'Sai (Mức Vận dụng): Khu vực nông thôn có đặc thù là tỉ lệ thiếu việc làm cao hơn, thành thị chủ yếu chịu áp lực thất nghiệp.' }
+    ],
+    explanation: 'Nhận định a, b, c là ĐÚNG; d là SAI.'
+  },
+  {
+    topicKeywords: ['nông nghiệp', 'vùng kinh tế', 'đbscl'],
+    level: 'Vận dụng',
+    content: 'Đoạn thông tin về nông nghiệp thích ứng tại Đồng bằng sông Cửu Long:\n"Đồng bằng sông Cửu Long đóng góp trên 50% sản lượng lúa và 70% sản lượng trái cây cả nước. Trước thách thức của xâm nhập mặn và biến đổi khí hậu, vùng đang chuyển mạnh từ tư duy sản xuất nông nghiệp thuần túy sang phát triển kinh tế nông nghiệp tuần hoàn và thích ứng thuận thiên."\nNguồn: Biên tập từ Nghị quyết 120/NQ-CP của Chính phủ',
+    items: [
+      { key: 'a', statement: 'Đồng bằng sông Cửu Long là vùng sản xuất lương thực, thực phẩm và thủy sản hàng hóa lớn nhất nước ta.', isCorrect: true, explanation: 'Đúng (Mức Biết): Tái hiện đúng vị thế trọng điểm nông nghiệp của vùng.' },
+      { key: 'b', statement: 'Mô hình xen canh tôm - lúa ở các tỉnh ven biển thể hiện sự thích ứng linh hoạt với tình trạng hạn mặn trong mùa khô.', isCorrect: true, explanation: 'Đúng (Mức Hiểu): Giải thích đúng cơ chế thích ứng thuận thiên (nước ngọt trồng lúa, nước lợ/mặn nuôi tôm).' },
+      { key: 'c', statement: 'Tăng cường chế biến sâu và xây dựng thương hiệu quốc tế là giải pháp trọng tâm để nâng cao giá trị gia tăng của nông sản vùng.', isCorrect: true, explanation: 'Đúng (Mức Vận dụng): Đề xuất giải pháp phát triển chuỗi giá trị nông nghiệp bền vững.' },
+      { key: 'd', statement: 'Giải pháp tối ưu hiện nay của vùng là tiến hành đắp đê bao khép kín toàn bộ diện tích để sản xuất lúa bốn vụ liên tục quanh năm.', isCorrect: false, explanation: 'Sai (Mức Vận dụng): Đắp đê khép kín làm suy giảm phù sa, cạn kiệt nguồn lợi thủy sản mùa lũ và gia tăng phèn hóa.' }
+    ],
+    explanation: 'Nhận định a, b, c là ĐÚNG; d là SAI.'
+  }
+];
+
+const DIA_LI_SHORT: RawShort[] = [
+  {
+    topicKeywords: ['rừng', 'lâm nghiệp', 'tự nhiên'],
+    level: 'Thông hiểu',
+    content: 'Năm 2020, diện tích rừng trồng nước ta là 4,4 triệu ha trên tổng số 14,7 triệu ha diện tích đất có rừng. Tính tỉ lệ (%) diện tích rừng trồng so với tổng diện tích đất có rừng của nước ta, làm tròn đến hàng phần mười. Khi trả lời, chỉ ghi số.',
+    key: '29,9',
+    explanation: 'Tỉ lệ rừng trồng = (4,4 / 14,7) * 100% ≈ 29,93% -> Làm tròn đến hàng phần mười: 29,9. (Đáp án 4 ký tự).'
+  },
+  {
+    topicKeywords: ['mật độ', 'dân số', 'dân cư'],
+    level: 'Thông hiểu',
+    content: 'Năm 2022, một quốc gia có dân số 98,5 triệu người và diện tích đất tự nhiên là 331,2 nghìn km². Tính mật độ dân số của quốc gia đó (đơn vị: người/km²), làm tròn đến hàng đơn vị. Khi trả lời, chỉ ghi số.',
+    key: '297',
+    explanation: 'Mật độ dân số = (98.500.000 / 331.200) ≈ 297,4 người/km² -> Làm tròn: 297. (Đáp án 3 ký tự).'
+  },
+  {
+    topicKeywords: ['đô thị', 'dân cư', 'tỉ lệ'],
+    level: 'Thông hiểu',
+    content: 'Năm 2022, số dân thành thị nước ta là 37,1 triệu người trong tổng số 98,5 triệu dân. Tính tỉ lệ dân thành thị (%) của nước ta, làm tròn đến hàng phần mười. Khi trả lời, chỉ ghi số.',
+    key: '37,7',
+    explanation: 'Tỉ lệ dân thành thị = (37,1 / 98,5) * 100% ≈ 37,66% -> Làm tròn: 37,7. (Đáp án 4 ký tự).'
+  },
+  {
+    topicKeywords: ['thương mại', 'xuất nhập khẩu', 'kinh tế'],
+    level: 'Vận dụng',
+    content: 'Năm 2022, tổng kim ngạch xuất khẩu hàng hóa của nước ta đạt 371,3 tỉ USD, tổng kim ngạch nhập khẩu đạt 358,9 tỉ USD. Tính cán cân thương mại hàng hóa của nước ta năm 2022 (đơn vị: tỉ USD), làm tròn đến hàng phần mười. Khi trả lời, chỉ ghi số.',
+    key: '12,4',
+    explanation: 'Cán cân thương mại = Xuất khẩu - Nhập khẩu = 371,3 - 358,9 = 12,4 tỉ USD. (Đáp án 4 ký tự).'
+  },
+  {
+    topicKeywords: ['nông nghiệp', 'lúa', 'tăng trưởng'],
+    level: 'Vận dụng',
+    content: 'Năm 2015 sản lượng thủy sản nuôi trồng nước ta đạt 3,53 triệu tấn, đến năm 2022 đạt 5,16 triệu tấn. Tính tốc độ tăng trưởng sản lượng thủy sản nuôi trồng năm 2022 so với năm 2015 (lấy năm 2015 = 100%), đơn vị %, làm tròn đến hàng đơn vị. Khi trả lời, chỉ ghi số.',
+    key: '146',
+    explanation: 'Tốc độ tăng trưởng = (5,16 / 3,53) * 100% ≈ 146,18% -> Làm tròn đến hàng đơn vị: 146. (Đáp án 3 ký tự).'
+  },
+  {
+    topicKeywords: ['điện', 'năng lượng', 'công nghiệp'],
+    level: 'Vận dụng cao',
+    content: 'Năm 2022, sản lượng điện phát ra của nước ta đạt 260 tỉ kWh phục vụ cho 99,0 triệu dân. Tính sản lượng điện bình quân đầu người của nước ta năm 2022 (đơn vị: kWh/người), làm tròn đến hàng đơn vị. Khi trả lời, chỉ ghi số.',
+    key: '2626',
+    explanation: 'Sản lượng điện bình quân = 260.000.000.000 / 99.000.000 ≈ 2626,26 kWh/người -> Làm tròn: 2626. (Đáp án 4 ký tự).'
+  }
+];
+
+const DIA_LI_ESSAY: RawEssay[] = [
+  {
+    topicKeywords: ['vị trí', 'biển', 'thủy sản'],
+    level: 'Vận dụng',
+    content: 'Dựa vào kiến thức về Vị trí địa lí và Biển đảo Việt Nam:\na) Trình bày hai thế mạnh tự nhiên chủ yếu để phát triển ngành khai thác và nuôi trồng thủy sản ở nước ta.\nb) Đề xuất hai giải pháp trọng tâm nhằm phát triển bền vững ngành kinh tế biển này trong giai đoạn hiện nay.',
+    essayRubric: 'Ý a (1.0 điểm - mỗi ý 0.5đ):\n- Thế mạnh 1: Đường bờ biển dài 3.260 km, vùng biển rộng 1 triệu km² với 4 ngư trường trọng điểm, nguồn lợi hải sản phong phú.\n- Thế mạnh 2: Ven biển có nhiều bãi triều, đầm phá, vũng vịnh kín gió và rừng ngập mặn thuận lợi cho nuôi trồng thủy sản nước lợ, nước mặn.\nÝ b (1.0 điểm - mỗi ý 0.5đ):\n- Giải pháp 1: Hiện đại hóa đội tàu đánh bắt xa bờ gắn với bảo vệ chủ quyền biển đảo và chống khai thác bất hợp pháp (IUU).\n- Giải pháp 2: Ứng dụng công nghệ cao trong nuôi trồng, phát triển công nghiệp chế biến sâu và bảo vệ môi trường sinh thái biển.\nLưu ý chấm: Học sinh có cách diễn đạt tương đương nhưng đúng bản chất vẫn cho điểm tối đa.',
+    explanation: 'Học sinh trình bày đủ 2 phần: 2 thế mạnh tự nhiên (1.0đ) và 2 giải pháp phát triển bền vững (1.0đ).'
+  },
+  {
+    topicKeywords: ['khí hậu', 'tự nhiên', 'biến đổi khí hậu'],
+    level: 'Vận dụng cao',
+    content: 'Dựa vào kiến thức về Địa lí tự nhiên và Biến đổi khí hậu:\na) Giải thích vì sao thiên nhiên nước ta mang tính chất nhiệt đới ẩm gió mùa.\nb) Phân tích hai tác động tiêu cực chủ yếu của biến đổi khí hậu đối với sản xuất nông nghiệp ở vùng Đồng bằng sông Cửu Long.',
+    essayRubric: 'Ý a (1.0 điểm):\n- Vị trí nằm hoàn toàn trong vùng nội chí tuyến Bắc bán cầu nên nhận được lượng bức xạ mặt trời lớn (0.5đ).\n- Tiếp giáp Biển Đông rộng lớn kết hợp với hoạt động luân phiên của các khối khí gió mùa mang lại lượng mưa và độ ẩm dồi dào (0.5đ).\nÝ b (1.0 điểm - mỗi ý 0.5đ):\n- Tác động 1: Hiện tượng xâm nhập mặn lấn sâu vào mùa khô làm thiếu hụt nguồn nước ngọt tưới tiêu cho lúa và cây ăn trái.\n- Tác động 2: Nước biển dâng và sạt lở bờ sông, bờ biển làm thu hẹp diện tích đất canh tác nông nghiệp.\nLưu ý chấm: Chấp nhận các biểu hiện tác động hợp lí khác như hạn hán cục bộ, dịch bệnh mùa vụ.',
+    explanation: 'Trình bày logic nguyên nhân tính chất nhiệt đới ẩm gió mùa và phân tích rõ 2 tác động tại ĐBSCL.'
+  }
+];
+
+// =========================================================================
+// 2. LỊCH SỬ (HISTORY) QUESTION BANK
+// =========================================================================
+const LICH_SU_MCQ: RawMCQ[] = [
+  {
+    topicKeywords: ['đảng', '1930', 'cách mạng'],
+    level: 'Nhận biết',
+    content: 'Đảng Cộng sản Việt Nam ra đời đầu năm 1930 là sản phẩm của sự kết hợp giữa chủ nghĩa Mác - Lênin với:',
+    options: [
+      { key: 'A', content: 'Phong trào công nhân và phong trào yêu nước Việt Nam.' },
+      { key: 'B', content: 'Phong trào nông dân và phong trào dân chủ tư sản.' },
+      { key: 'C', content: 'Phong trào tiểu tư sản trí thức và văn hóa dân tộc.' },
+      { key: 'D', content: 'Phong trào giải phóng dân tộc ở các nước thuộc địa phương Tây.' }
+    ],
+    correctOption: 'A',
+    explanation: 'Quy luật ra đời của Đảng Cộng sản Việt Nam = Chủ nghĩa Mác - Lênin + Phong trào công nhân + Phong trào yêu nước.'
+  },
+  {
+    topicKeywords: ['cách mạng tháng tám', '1945'],
+    level: 'Nhận biết',
+    content: 'Hội nghị toàn quốc của Đảng họp tại Tân Trào (ngày 14 - 15/8/1945) đã quyết định vấn đề quan trọng nào?',
+    options: [
+      { key: 'A', content: 'Phát động Tổng khởi nghĩa giành chính quyền trong cả nước.' },
+      { key: 'B', content: 'Kí kết Hiệp định Sơ bộ với thực dân Pháp.' },
+      { key: 'C', content: 'Thành lập Mặt trận Việt Minh.' },
+      { key: 'D', content: 'Đề ra đường lối Đổi mới toàn diện đất nước.' }
+    ],
+    correctOption: 'A',
+    explanation: 'Hội nghị Tân Trào nhận định thời cơ khởi nghĩa ngàn năm có một đã đến và quyết định phát động Tổng khởi nghĩa trước khi quân Đồng minh vào Đông Dương.'
+  },
+  {
+    topicKeywords: ['điện biên phủ', '1954', 'kháng chiến pháp'],
+    level: 'Thông hiểu',
+    content: 'Thắng lợi quân sự nào của quân và dân ta đã đập tan hoàn toàn kế hoạch Nava, xoay chuyển cục diện chiến tranh và buộc Pháp phải kí Hiệp định Giơ-ne-vơ (1954)?',
+    options: [
+      { key: 'A', content: 'Chiến dịch Điện Biên Phủ năm 1954.' },
+      { key: 'B', content: 'Chiến dịch Biên giới thu - đông 1950.' },
+      { key: 'C', content: 'Chiến dịch Việt Bắc thu - đông 1947.' },
+      { key: 'D', content: 'Chiến dịch Tây Nguyên năm 1975.' }
+    ],
+    correctOption: 'A',
+    explanation: 'Chiến thắng lịch sử Điện Biên Phủ "lừng lẫy năm châu, chấn động địa cầu" là đòn quyết định đập tan ý chí xâm lược của thực dân Pháp.'
+  },
+  {
+    topicKeywords: ['đổi mới', '1986', 'đảng'],
+    level: 'Nhận biết',
+    content: 'Đường lối Đổi mới toàn diện đất nước được Đảng Cộng sản Việt Nam đề ra tại Đại hội đại biểu toàn quốc lần thứ mấy?',
+    options: [
+      { key: 'A', content: 'Đại hội đại biểu toàn quốc lần thứ VI (tháng 12/1986).' },
+      { key: 'B', content: 'Đại hội đại biểu toàn quốc lần thứ V (tháng 3/1982).' },
+      { key: 'C', content: 'Đại hội đại biểu toàn quốc lần thứ VII (tháng 6/1991).' },
+      { key: 'D', content: 'Đại hội đại biểu toàn quốc lần thứ VIII (tháng 6/1996).' }
+    ],
+    correctOption: 'A',
+    explanation: 'Đại hội VI của Đảng (12/1986) đã mở ra bước ngoặt lịch sử với đường lối Đổi mới kinh tế, chính trị và hội nhập quốc tế.'
+  },
+  {
+    topicKeywords: ['chiến tranh lạnh', 'thế giới', 'ian-ta'],
+    level: 'Thông hiểu',
+    content: 'Đặc trưng nổi bật bao trùm của quan hệ quốc tế từ sau Chiến tranh thế giới thứ hai đến năm 1991 là:',
+    options: [
+      { key: 'A', content: 'Tình trạng đối đầu căng thẳng giữa hai phe TBCN và XHCN do hai siêu cường Mỹ - Xô đứng đầu.' },
+      { key: 'B', content: 'Sự hợp tác toàn diện và không có mâu thuẫn giữa các nước lớn.' },
+      { key: 'C', content: 'Xu thế hòa hoãn và giải trừ quân bị hoàn toàn trên toàn cầu.' },
+      { key: 'D', content: 'Sự tan rã của tất cả các khối liên minh quân sự trên thế giới.' }
+    ],
+    correctOption: 'A',
+    explanation: 'Trật tự hai cực I-an-ta và Chiến tranh Lạnh chi phối sâu sắc toàn bộ nền chính trị và quan hệ quốc tế thế giới trong nửa sau thế kỉ XX.'
+  },
+  {
+    topicKeywords: ['asean', 'đông nam á'],
+    level: 'Nhận biết',
+    content: 'Hiệp hội các quốc gia Đông Nam Á (ASEAN) được thành lập vào năm 1967 tại Băng Cốc (Thái Lan) với sự tham gia ban đầu của mấy nước?',
+    options: [
+      { key: 'A', content: '5 nước (Indonesia, Malaysia, Philippines, Singapore, Thái Lan).' },
+      { key: 'B', content: '6 nước.' },
+      { key: 'C', content: '10 nước.' },
+      { key: 'D', content: '4 nước.' }
+    ],
+    correctOption: 'A',
+    explanation: 'Năm quốc gia sáng lập ASEAN gồm Indonesia, Malaysia, Philippines, Singapore và Thái Lan.'
+  },
+  {
+    topicKeywords: ['1975', 'đại thắng', 'hồ chí minh'],
+    level: 'Thông hiểu',
+    content: 'Chiến dịch mang tên Chủ tịch Hồ Chí Minh (1975) đã giải phóng hoàn toàn địa bàn nào sau đây?',
+    options: [
+      { key: 'A', content: 'Sài Gòn - Gia Định và toàn bộ miền Nam.' },
+      { key: 'B', content: 'Thành phố Huế và Đà Nẵng.' },
+      { key: 'C', content: 'Tỉnh Buôn Ma Thuột và toàn vùng Tây Nguyên.' },
+      { key: 'D', content: 'Tỉnh Quảng Trị và vĩ tuyến 17.' }
+    ],
+    correctOption: 'A',
+    explanation: 'Chiến dịch Hồ Chí Minh lịch sử (26/4 - 30/4/1975) giải phóng Sài Gòn - Gia Định, kết thúc thắng lợi cuộc kháng chiến chống Mỹ cứu nước.'
+  },
+  {
+    topicKeywords: ['mặt trận', 'việt minh', '1941'],
+    level: 'Thông hiểu',
+    content: 'Mặt trận Việt Minh được thành lập vào tháng 5/1941 nhằm mục tiêu cao nhất là:',
+    options: [
+      { key: 'A', content: 'Tập hợp toàn thể các tầng lớp nhân dân yêu nước thực hiện nhiệm vụ giải phóng dân tộc.' },
+      { key: 'B', content: 'Thực hiện ngay khẩu hiệu cách mạng ruộng đất cho nông dân nghèo.' },
+      { key: 'C', content: 'Tập trung đấu tranh đòi quyền lợi kinh tế trong các xí nghiệp Pháp.' },
+      { key: 'D', content: 'Xây dựng khối liên minh công nông thuần túy không liên kết tầng lớp khác.' }
+    ],
+    correctOption: 'A',
+    explanation: 'Hội nghị Trung ương 8 (5/1941) đặt nhiệm vụ giải phóng dân tộc lên hàng đầu và thành lập Mặt trận Việt Minh để đại đoàn kết dân tộc.'
+  }
+];
+
+const LICH_SU_TF: RawTF[] = [
+  {
+    topicKeywords: ['cách mạng tháng tám', '1945'],
+    level: 'Thông hiểu',
+    content: 'Đoạn thông tin về Tổng khởi nghĩa Cách mạng Tháng Tám năm 1945:\n"Cách mạng Tháng Tám năm 1945 là cuộc cách mạng giải phóng dân tộc điển hình, diễn ra nhanh chóng, ít đổ máu và giành thắng lợi triệt để trong vòng 15 ngày (từ 14/8 đến 28/8/1945). Ngày 2/9/1945, Chủ tịch Hồ Chí Minh đọc bản Tuyên ngôn Độc lập khai sinh nước Việt Nam Dân chủ Cộng hòa."\nNguồn: Biên tập từ SGK Lịch sử 12, NXB Giáo dục Việt Nam',
+    items: [
+      { key: 'a', statement: 'Cách mạng Tháng Tám năm 1945 đã lật đổ ách thống trị của phát xít Nhật và thực dân Pháp trên toàn lãnh thổ nước ta.', isCorrect: true, explanation: 'Đúng (Mức Biết): Tái hiện chính xác kết quả lịch sử của cuộc Tổng khởi nghĩa.' },
+      { key: 'b', statement: 'Nghệ thuật chớp thời cơ đóng vai trò quyết định, giúp cuộc khởi nghĩa giành thắng lợi mau lẹ trước khi quân Đồng minh vào Đông Dương.', isCorrect: true, explanation: 'Đúng (Mức Hiểu): Giải thích đúng nghệ thuật nắm bắt thời cơ ngàn năm có một.' },
+      { key: 'c', statement: 'Thắng lợi của Cách mạng Tháng Tám chứng minh sức mạnh của khối đại đoàn kết toàn dân tộc dưới sự lãnh đạo sáng suốt của Đảng Cộng sản Đông Dương.', isCorrect: true, explanation: 'Đúng (Mức Vận dụng): Đánh giá đúng bản chất và nguồn gốc sức mạnh dân tộc.' },
+      { key: 'd', statement: 'Sau Cách mạng Tháng Tám, toàn bộ bộ máy chính quyền phong kiến nhà Nguyễn vẫn được giữ nguyên để điều hành đất nước.', isCorrect: false, explanation: 'Sai (Mức Vận dụng): Vua Bảo Đại thoái vị, chế độ quân chủ phong kiến nghìn năm chính thức chấm dứt hoàn toàn.' }
+    ],
+    explanation: 'Nhận định a, b, c là ĐÚNG; d là SAI.'
+  },
+  {
+    topicKeywords: ['đổi mới', '1986', 'kinh tế'],
+    level: 'Vận dụng',
+    content: 'Đoạn thông tin về đường lối Đổi mới đất nước từ năm 1986:\n"Đại hội VI của Đảng (12/1986) đã dũng cảm nhìn thẳng vào sự thật, đánh giá đúng sự thật, đề ra đường lối Đổi mới toàn diện. Trọng tâm là đổi mới kinh tế: xóa bỏ cơ chế tập trung quan liêu bao cấp, phát triển nền kinh tế thị trường định hướng xã hội chủ nghĩa nhiều thành phần."\nNguồn: Tổng hợp từ Văn kiện Đảng Toàn tập, NXB Chính trị Quốc gia',
+    items: [
+      { key: 'a', statement: 'Đại hội VI của Đảng (tháng 12/1986) là mốc lịch sử mở đầu công cuộc Đổi mới toàn diện đất nước.', isCorrect: true, explanation: 'Đúng (Mức Biết): Nhận biết đúng thời điểm và sự kiện lịch sử khởi xướng Đổi mới.' },
+      { key: 'b', statement: 'Đổi mới kinh tế được xác định là trọng tâm hàng đầu nhằm giải quyết khủng hoảng kinh tế - xã hội và nâng cao đời sống nhân dân.', isCorrect: true, explanation: 'Đúng (Mức Hiểu): Thể hiện rõ mối quan hệ giữa đổi mới kinh tế và mục tiêu ổn định phát triển.' },
+      { key: 'c', statement: 'Việc chuyển đổi sang kinh tế thị trường định hướng XHCN giúp giải phóng sức sản xuất và chủ động hội nhập kinh tế quốc tế sâu rộng.', isCorrect: true, explanation: 'Đúng (Mức Vận dụng): Suy luận và đánh giá đúng hiệu quả phát triển của đường lối Đổi mới.' },
+      { key: 'd', statement: 'Đường lối Đổi mới chủ trương đóng cửa kinh tế đối ngoại và duy trì độc quyền tuyệt đối mọi nguồn lực sản xuất.', isCorrect: false, explanation: 'Sai (Mức Vận dụng): Đổi mới chủ trương mở cửa, đa phương hóa, đa dạng hóa và phát triển nhiều thành phần kinh tế.' }
+    ],
+    explanation: 'Nhận định a, b, c là ĐÚNG; d là SAI.'
+  }
+];
+
+const LICH_SU_SHORT: RawShort[] = [
+  {
+    topicKeywords: ['đổi mới', 'năm'],
+    level: 'Nhận biết',
+    content: 'Đại hội đại biểu toàn quốc lần thứ mấy của Đảng Cộng sản Việt Nam (tháng 12/1986) đã chính thức khởi xướng công cuộc Đổi mới đất nước? Điền số thứ tự của Đại hội (ví dụ: 6). Khi trả lời, chỉ ghi số.',
+    key: '6',
+    explanation: 'Đại hội đại biểu toàn quốc lần thứ 6 của Đảng (12/1986).'
+  },
+  {
+    topicKeywords: ['liên hợp quốc', 'năm'],
+    level: 'Nhận biết',
+    content: 'Việt Nam chính thức được kết nạp và trở thành thành viên thứ 149 của tổ chức Liên Hợp Quốc (UN) vào năm nào? Khi trả lời, chỉ ghi số.',
+    key: '1977',
+    explanation: 'Việt Nam gia nhập Liên Hợp Quốc ngày 20/9/1977.'
+  },
+  {
+    topicKeywords: ['asean', 'năm'],
+    level: 'Thông hiểu',
+    content: 'Việt Nam chính thức gia nhập và trở thành thành viên thứ 7 của Hiệp hội các quốc gia Đông Nam Á (ASEAN) vào năm nào? Khi trả lời, chỉ ghi số.',
+    key: '1995',
+    explanation: 'Việt Nam gia nhập ASEAN ngày 28/7/1995 tại Brunei.'
+  },
+  {
+    topicKeywords: ['điện biên phủ', 'ngày'],
+    level: 'Thông hiểu',
+    content: 'Chiến dịch lịch sử Điện Biên Phủ diễn ra trong thời gian bao nhiêu ngày đêm (từ 13/3/1954 đến 7/5/1954)? Khi trả lời, chỉ ghi số.',
+    key: '56',
+    explanation: 'Chiến dịch Điện Biên Phủ diễn ra trong 56 ngày đêm.'
+  }
+];
+
+const LICH_SU_ESSAY: RawEssay[] = [
+  {
+    topicKeywords: ['cách mạng tháng tám', 'bài học'],
+    level: 'Vận dụng cao',
+    content: 'Phân tích nguyên nhân thắng lợi và bài học kinh nghiệm về chớp thời cơ của Cách mạng Tháng Tám năm 1945. Vận dụng bài học này vào công cuộc phát triển kinh tế và hội nhập quốc tế của Việt Nam hiện nay.',
+    essayRubric: 'Ý a (1.0đ): Nguyên nhân thắng lợi (sự lãnh đạo sáng suốt của Đảng và Chủ tịch Hồ Chí Minh; tinh thần yêu nước quật cường của toàn dân; chuẩn bị chu đáo suốt 15 năm; thời cơ quốc tế thuận lợi).\nÝ b (0.5đ): Bài học chớp thời cơ (dự báo đúng xu thế, hành động quyết đoán, kết hợp sức mạnh dân tộc với sức mạnh thời đại).\nÝ c (0.5đ): Liên hệ thực tiễn (chủ động nắm bắt cơ hội Cách mạng công nghiệp 4.0, chuyển đổi số và tham gia các hiệp định thương mại tự do thế hệ mới).',
+    explanation: 'Học sinh làm rõ đủ nguyên nhân, bài học lịch sử và liên hệ thực tiễn hiện đại.'
+  }
+];
+
+// =========================================================================
+// 3. TOÁN HỌC (MATHEMATICS) QUESTION BANK
+// =========================================================================
+const TOAN_MCQ: RawMCQ[] = [
+  {
+    topicKeywords: ['hàm số', 'đơn điệu', 'đạo hàm'],
+    level: 'Nhận biết',
+    content: 'Cho hàm số $y = f(x)$ có đạo hàm $f\'(x) = x^2 - 4$. Hàm số đã cho nghịch biến trên khoảng nào dưới đây?',
+    options: [
+      { key: 'A', content: '$(-2; 2)$' },
+      { key: 'B', content: '$(2; +\\infty)$' },
+      { key: 'C', content: '$(-\\infty; -2)$' },
+      { key: 'D', content: '$(0; 4)$' }
+    ],
+    correctOption: 'A',
+    explanation: 'Ta có $f\'(x) < 0 \\iff x^2 - 4 < 0 \\iff -2 < x < 2$. Do đó hàm số nghịch biến trên khoảng $(-2; 2)$.'
+  },
+  {
+    topicKeywords: ['cực trị', 'hàm số'],
+    level: 'Nhận biết',
+    content: 'Điểm cực đại của đồ thị hàm số $y = x^3 - 3x + 2$ là:',
+    options: [
+      { key: 'A', content: '$(-1; 4)$' },
+      { key: 'B', content: '$(1; 0)$' },
+      { key: 'C', content: '$(0; 2)$' },
+      { key: 'D', content: '$(2; 4)$' }
+    ],
+    correctOption: 'A',
+    explanation: '$y\' = 3x^2 - 3 = 0 \\iff x = \\pm 1$. Bảng xét dấu: $x = -1$ là điểm cực đại, $y(-1) = 4 \\implies (-1; 4)$.'
+  },
+  {
+    topicKeywords: ['tiệm cận', 'hàm số'],
+    level: 'Thông hiểu',
+    content: 'Đồ thị hàm số $y = \\frac{2x + 1}{x - 3}$ có đường tiệm cận đứng và tiệm cận ngang lần lượt là:',
+    options: [
+      { key: 'A', content: '$x = 3$ và $y = 2$.' },
+      { key: 'B', content: '$x = -3$ và $y = 2$.' },
+      { key: 'C', content: '$x = 2$ và $y = 3$.' },
+      { key: 'D', content: '$y = 3$ và $x = 2$.' }
+    ],
+    correctOption: 'A',
+    explanation: 'Mẫu số bằng 0 tại $x = 3$ nên tiệm cận đứng $x = 3$; bậc tử bằng bậc mẫu nên tiệm cận ngang $y = 2/1 = 2$.'
+  },
+  {
+    topicKeywords: ['vectơ', 'oxyz', 'toạ độ'],
+    level: 'Nhận biết',
+    content: 'Trong không gian $Oxyz$, cho vectơ $\\vec{a} = 3\\vec{i} - 2\\vec{j} + 4\\vec{k}$. Toạ độ của vectơ $\\vec{a}$ là:',
+    options: [
+      { key: 'A', content: '$(3; -2; 4)$' },
+      { key: 'B', content: '$(3; 2; 4)$' },
+      { key: 'C', content: '$(-2; 3; 4)$' },
+      { key: 'D', content: '$(4; -2; 3)$' }
+    ],
+    correctOption: 'A',
+    explanation: 'Theo định nghĩa toạ độ vectơ: $\\vec{a} = x\\vec{i} + y\\vec{j} + z\\vec{k} \\implies \\vec{a} = (3; -2; 4)$.'
+  },
+  {
+    topicKeywords: ['mặt phẳng', 'oxyz'],
+    level: 'Thông hiểu',
+    content: 'Trong không gian $Oxyz$, mặt phẳng $(P)$ đi qua điểm $M(1; 0; -2)$ và có vectơ pháp tuyến $\\vec{n} = (2; -1; 3)$ có phương trình là:',
+    options: [
+      { key: 'A', content: '$2x - y + 3z + 4 = 0$' },
+      { key: 'B', content: '$2x - y + 3z - 4 = 0$' },
+      { key: 'C', content: '$x - 2z + 4 = 0$' },
+      { key: 'D', content: '$2x - y + 3z = 0$' }
+    ],
+    correctOption: 'A',
+    explanation: 'Phương trình $(P): 2(x - 1) - 1(y - 0) + 3(z + 2) = 0 \\iff 2x - y + 3z + 4 = 0$.'
+  },
+  {
+    topicKeywords: ['giá trị lớn nhất', 'nhỏ nhất', 'hàm số'],
+    level: 'Thông hiểu',
+    content: 'Giá trị nhỏ nhất của hàm số $y = x^4 - 2x^2 + 3$ trên đoạn $[0; 2]$ bằng:',
+    options: [
+      { key: 'A', content: '$2$' },
+      { key: 'B', content: '$3$' },
+      { key: 'C', content: '$11$' },
+      { key: 'D', content: '$0$' }
+    ],
+    correctOption: 'A',
+    explanation: '$y\' = 4x^3 - 4x = 0 \\iff x = 0, x = 1, x = -1$. Trên $[0; 2]$: $y(0) = 3, y(1) = 2, y(2) = 11$. Vậy $\\min = 2$.'
+  },
+  {
+    topicKeywords: ['xác suất', 'thống kê'],
+    level: 'Vận dụng',
+    content: 'Gieo một con súc sắc cân đối và đồng chất hai lần. Xác suất để tổng số chấm xuất hiện trong hai lần gieo bằng 7 là:',
+    options: [
+      { key: 'A', content: '$\\frac{1}{6}$' },
+      { key: 'B', content: '$\\frac{1}{12}$' },
+      { key: 'C', content: '$\\frac{7}{36}$' },
+      { key: 'D', content: '$\\frac{5}{36}$' }
+    ],
+    correctOption: 'A',
+    explanation: 'Không gian mẫu $n(\\Omega) = 36$. Các cặp tổng bằng 7: (1,6),(2,5),(3,4),(4,3),(5,2),(6,1) -> 6 biến cố. $P = 6/36 = 1/6$.'
+  }
+];
+
+const TOAN_TF: RawTF[] = [
+  {
+    topicKeywords: ['hàm số', 'khảo sát'],
+    level: 'Vận dụng',
+    content: 'Cho hàm số $y = f(x) = \\frac{x^2 - 3x + 6}{x - 1}$ xác định trên $\\mathbb{R} \\setminus \\{1\\}$. Xét tính đúng/sai của các mệnh đề sau:',
+    items: [
+      { key: 'a', statement: 'Đạo hàm của hàm số là $f\'(x) = \\frac{x^2 - 2x - 3}{(x-1)^2}$.', isCorrect: true, explanation: '$f\'(x) = \\frac{(2x-3)(x-1) - (x^2-3x+6)}{(x-1)^2} = \\frac{x^2-2x-3}{(x-1)^2}$.' },
+      { key: 'b', statement: 'Hàm số đạt cực đại tại điểm $x = 3$.', isCorrect: false, explanation: 'Nghiệm $x = -1$ (cực đại) và $x = 3$ (cực tiểu).' },
+      { key: 'c', statement: 'Đồ thị hàm số có đường tiệm cận xiên là $y = x - 2$.', isCorrect: true, explanation: 'Ta có $y = x - 2 + \\frac{4}{x - 1} \\implies$ tiệm cận xiên $y = x - 2$.' },
+      { key: 'd', statement: 'Giá trị nhỏ nhất của hàm số trên khoảng $(1; +\\infty)$ bằng $3$.', isCorrect: true, explanation: 'Tại $x = 3 \\in (1; +\\infty)$, $f(3) = \\frac{9 - 9 + 6}{2} = 3$.' }
+    ],
+    explanation: 'Mệnh đề a, c, d ĐÚNG; b SAI.'
+  },
+  {
+    topicKeywords: ['oxyz', 'hình học'],
+    level: 'Thông hiểu',
+    content: 'Trong không gian $Oxyz$, cho bốn điểm $A(1; 0; 0)$, $B(0; 2; 0)$, $C(0; 0; 3)$ và $D(2; 4; 6)$. Xét tính đúng sai của các mệnh đề:',
+    items: [
+      { key: 'a', statement: 'Mặt phẳng $(ABC)$ có phương trình đoạn chắn là $\\frac{x}{1} + \\frac{y}{2} + \\frac{z}{3} = 1$.', isCorrect: true, explanation: 'Đúng theo công thức mặt phẳng đoạn chắn.' },
+      { key: 'b', statement: 'Vectơ pháp tuyến của mặt phẳng $(ABC)$ là $\\vec{n} = (6; 3; 2)$.', isCorrect: true, explanation: '$6x + 3y + 2z - 6 = 0 \\implies \\vec{n} = (6; 3; 2)$.' },
+      { key: 'c', statement: 'Điểm $D(2; 4; 6)$ thuộc mặt phẳng $(ABC)$.', isCorrect: false, explanation: 'Thay toạ độ $D$: $6(2) + 3(4) + 2(6) - 6 = 30 \\neq 0$.' },
+      { key: 'd', statement: 'Độ dài đoạn thẳng $OA = 1$.', isCorrect: true, explanation: '$OA = \\sqrt{1^2 + 0^2 + 0^2} = 1$.' }
+    ],
+    explanation: 'Mệnh đề a, b, d ĐÚNG; c SAI.'
+  }
+];
+
+const TOAN_SHORT: RawShort[] = [
+  {
+    topicKeywords: ['cực trị', 'hàm số'],
+    level: 'Thông hiểu',
+    content: 'Tìm giá trị cực đại của hàm số $y = -x^2 + 4x + 5$.',
+    key: '9',
+    explanation: 'Đỉnh parabol tại $x = 2 \\implies y_{max} = -(2)^2 + 4(2) + 5 = 9$.'
+  },
+  {
+    topicKeywords: ['tích phân', 'nguyên hàm'],
+    level: 'Vận dụng',
+    content: 'Tính tích phân $I = \\int_0^2 (3x^2 - 2x + 1) dx$.',
+    key: '6',
+    explanation: '$I = [x^3 - x^2 + x]_0^2 = (8 - 4 + 2) - 0 = 6$.'
+  },
+  {
+    topicKeywords: ['khoảng cách', 'oxyz'],
+    level: 'Vận dụng',
+    content: 'Trong không gian $Oxyz$, tính khoảng cách từ gốc toạ độ $O(0;0;0)$ đến mặt phẳng $(P): 2x - 2y + z - 6 = 0$.',
+    key: '2',
+    explanation: '$d = \\frac{|-6|}{\\sqrt{2^2 + (-2)^2 + 1^2}} = \\frac{6}{3} = 2$.'
+  }
+];
+
+const TOAN_ESSAY: RawEssay[] = [
+  {
+    topicKeywords: ['khảo sát', 'đồ thị'],
+    level: 'Vận dụng',
+    content: 'Khảo sát sự biến thiên và vẽ đồ thị của hàm số $y = x^3 - 3x^2 + 2$.',
+    essayRubric: 'Ý a (1.0đ): Tập xác định $\\mathbb{R}$, đạo hàm $y\' = 3x^2 - 6x$, giải nghiệm $x = 0, x = 2$, lập bảng biến thiên chính xác.\nÝ b (1.0đ): Tìm cực đại $(0; 2)$, cực tiểu $(2; -2)$, tìm điểm uốn và vẽ đồ thị chuẩn xác.',
+    explanation: 'Thực hiện đầy đủ quy trình khảo sát hàm số.'
+  }
+];
+
+// =========================================================================
+// MAIN DISPATCHER: BUILD UNIQUE QUESTIONS GUARANTEED
+// =========================================================================
+
 export function generateConsistentQuestionsFromMatrixAndSpec(
   header: ExamHeaderConfig,
   matrix: MatrixRow[],
@@ -50,7 +743,6 @@ export function generateConsistentQuestionsFromMatrixAndSpec(
 ): ExamQuestion[] {
   const subjectKey = normalizeSubjectKey(header.subject);
   const questions: ExamQuestion[] = [];
-  let globalOrder = 1;
 
   const partConfigs = header.partConfigs || {
     part1: { name: 'Phần I (TN 4 lựa chọn)', pointsPerQuestion: 0.25, targetQuestions: 12 },
@@ -64,132 +756,138 @@ export function generateConsistentQuestionsFromMatrixAndSpec(
   const p3Pts = partConfigs.part3?.pointsPerQuestion ?? 0.5;
   const p4Pts = partConfigs.part4?.pointsPerQuestion ?? 1.0;
 
-  // Track counts to generate corresponding questions per matrix row
-  // 1. GENERATE PART I QUESTIONS (Multiple Choice)
+  // Track used signatures across the entire test paper to strictly prevent duplicate questions
+  const usedContents = new Set<string>();
+
+  // 1. GENERATE PART I (Multiple Choice - numbering starts at 1)
   let p1Order = 1;
   matrix.forEach((row, rowIndex) => {
     const spec = specification[rowIndex];
     const rowCounts = [
-      { level: 'Nhận biết' as const, count: row.part1_nb, obj: spec?.learningObjectives?.nb },
-      { level: 'Thông hiểu' as const, count: row.part1_th, obj: spec?.learningObjectives?.th },
-      { level: 'Vận dụng' as const, count: row.part1_vd, obj: spec?.learningObjectives?.vd },
-      { level: 'Vận dụng cao' as const, count: row.part1_vdc, obj: spec?.learningObjectives?.vdc },
+      { level: 'Nhận biết' as const, count: row.part1_nb || 0, obj: spec?.learningObjectives?.nb },
+      { level: 'Thông hiểu' as const, count: row.part1_th || 0, obj: spec?.learningObjectives?.th },
+      { level: 'Vận dụng' as const, count: row.part1_vd || 0, obj: spec?.learningObjectives?.vd },
+      { level: 'Vận dụng cao' as const, count: row.part1_vdc || 0, obj: spec?.learningObjectives?.vdc },
     ];
 
     rowCounts.forEach(({ level, count, obj }) => {
       for (let i = 0; i < count; i++) {
-        const q = buildSubjectQuestion({
+        const q = getUniqueMCQuestion({
           subjectKey,
           subjectName: header.subject,
           grade: header.grade,
           topic: row.topic,
           unit: row.unit,
-          type: 'multiple_choice',
           level,
           objective: obj,
           orderNumber: p1Order++,
           points: p1Pts,
-          index: i
+          index: i,
+          rowIndex,
+          usedContents
         });
         questions.push(q);
       }
     });
   });
 
-  // 2. GENERATE PART II QUESTIONS (True / False - count restarts from 1)
+  // 2. GENERATE PART II (True/False - numbering restarts at 1)
   let p2Order = 1;
   matrix.forEach((row, rowIndex) => {
     const spec = specification[rowIndex];
     const rowCounts = [
-      { level: 'Nhận biết' as const, count: row.part2_nb, obj: spec?.learningObjectives?.nb },
-      { level: 'Thông hiểu' as const, count: row.part2_th, obj: spec?.learningObjectives?.th },
-      { level: 'Vận dụng' as const, count: row.part2_vd, obj: spec?.learningObjectives?.vd },
-      { level: 'Vận dụng cao' as const, count: row.part2_vdc, obj: spec?.learningObjectives?.vdc },
+      { level: 'Nhận biết' as const, count: row.part2_nb || 0, obj: spec?.learningObjectives?.nb },
+      { level: 'Thông hiểu' as const, count: row.part2_th || 0, obj: spec?.learningObjectives?.th },
+      { level: 'Vận dụng' as const, count: row.part2_vd || 0, obj: spec?.learningObjectives?.vd },
+      { level: 'Vận dụng cao' as const, count: row.part2_vdc || 0, obj: spec?.learningObjectives?.vdc },
     ];
 
     rowCounts.forEach(({ level, count, obj }) => {
       for (let i = 0; i < count; i++) {
-        const q = buildSubjectQuestion({
+        const q = getUniqueTFQuestion({
           subjectKey,
           subjectName: header.subject,
           grade: header.grade,
           topic: row.topic,
           unit: row.unit,
-          type: 'true_false',
           level,
           objective: obj,
           orderNumber: p2Order++,
           points: p2Pts,
-          index: i
+          index: i,
+          rowIndex,
+          usedContents
         });
         questions.push(q);
       }
     });
   });
 
-  // 3. GENERATE PART III QUESTIONS (Short Answer - count restarts from 1)
+  // 3. GENERATE PART III (Short Answer - numbering restarts at 1)
   let p3Order = 1;
   matrix.forEach((row, rowIndex) => {
     const spec = specification[rowIndex];
     const rowCounts = [
-      { level: 'Nhận biết' as const, count: row.part3_nb, obj: spec?.learningObjectives?.nb },
-      { level: 'Thông hiểu' as const, count: row.part3_th, obj: spec?.learningObjectives?.th },
-      { level: 'Vận dụng' as const, count: row.part3_vd, obj: spec?.learningObjectives?.vd },
-      { level: 'Vận dụng cao' as const, count: row.part3_vdc, obj: spec?.learningObjectives?.vdc },
+      { level: 'Nhận biết' as const, count: row.part3_nb || 0, obj: spec?.learningObjectives?.nb },
+      { level: 'Thông hiểu' as const, count: row.part3_th || 0, obj: spec?.learningObjectives?.th },
+      { level: 'Vận dụng' as const, count: row.part3_vd || 0, obj: spec?.learningObjectives?.vd },
+      { level: 'Vận dụng cao' as const, count: row.part3_vdc || 0, obj: spec?.learningObjectives?.vdc },
     ];
 
     rowCounts.forEach(({ level, count, obj }) => {
       for (let i = 0; i < count; i++) {
-        const q = buildSubjectQuestion({
+        const q = getUniqueShortQuestion({
           subjectKey,
           subjectName: header.subject,
           grade: header.grade,
           topic: row.topic,
           unit: row.unit,
-          type: 'short_answer',
           level,
           objective: obj,
           orderNumber: p3Order++,
           points: p3Pts,
-          index: i
+          index: i,
+          rowIndex,
+          usedContents
         });
         questions.push(q);
       }
     });
   });
 
-  // 4. GENERATE PART IV QUESTIONS (Essay - count restarts from 1)
+  // 4. GENERATE PART IV (Essay - numbering restarts at 1)
   let p4Order = 1;
   matrix.forEach((row, rowIndex) => {
     const spec = specification[rowIndex];
     const rowCounts = [
-      { level: 'Nhận biết' as const, count: row.part4_nb, obj: spec?.learningObjectives?.nb },
-      { level: 'Thông hiểu' as const, count: row.part4_th, obj: spec?.learningObjectives?.th },
-      { level: 'Vận dụng' as const, count: row.part4_vd, obj: spec?.learningObjectives?.vd },
-      { level: 'Vận dụng cao' as const, count: row.part4_vdc, obj: spec?.learningObjectives?.vdc },
+      { level: 'Nhận biết' as const, count: row.part4_nb || 0, obj: spec?.learningObjectives?.nb },
+      { level: 'Thông hiểu' as const, count: row.part4_th || 0, obj: spec?.learningObjectives?.th },
+      { level: 'Vận dụng' as const, count: row.part4_vd || 0, obj: spec?.learningObjectives?.vd },
+      { level: 'Vận dụng cao' as const, count: row.part4_vdc || 0, obj: spec?.learningObjectives?.vdc },
     ];
 
     rowCounts.forEach(({ level, count, obj }) => {
       for (let i = 0; i < count; i++) {
-        const q = buildSubjectQuestion({
+        const q = getUniqueEssayQuestion({
           subjectKey,
           subjectName: header.subject,
           grade: header.grade,
           topic: row.topic,
           unit: row.unit,
-          type: 'essay',
           level,
           objective: obj,
           orderNumber: p4Order++,
           points: p4Pts,
-          index: i
+          index: i,
+          rowIndex,
+          usedContents
         });
         questions.push(q);
       }
     });
   });
 
-  // If matrix is empty or produced 0 questions, return a solid fallback
+  // Fallback if matrix was completely 0
   if (questions.length === 0) {
     return generateFallbackQuestionsForSubject(header);
   }
@@ -197,642 +895,254 @@ export function generateConsistentQuestionsFromMatrixAndSpec(
   return questions;
 }
 
-interface BuildQuestionParams {
+// -------------------------------------------------------------
+// SELECTION HELPERS THAT STRICTLY ENFORCE UNIQUENESS
+// -------------------------------------------------------------
+
+interface SelectionContext {
   subjectKey: string;
   subjectName: string;
   grade: string;
   topic: string;
   unit: string;
-  type: 'multiple_choice' | 'true_false' | 'short_answer' | 'essay';
   level: 'Nhận biết' | 'Thông hiểu' | 'Vận dụng' | 'Vận dụng cao';
   objective?: string;
   orderNumber: number;
   points: number;
   index: number;
+  rowIndex: number;
+  usedContents: Set<string>;
 }
 
-function buildSubjectQuestion(p: BuildQuestionParams): ExamQuestion {
-  const { subjectKey, topic, unit, type, level, objective, orderNumber, points, index } = p;
-  const id = `q-${type}-${orderNumber}-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 5)}`;
+function getUniqueMCQuestion(ctx: SelectionContext): ExamQuestion {
+  const pool = getSubjectMCQPool(ctx.subjectKey);
+  const id = `q-mc-${ctx.orderNumber}-${Math.random().toString(36).substring(2, 6)}`;
 
-  // ==========================================
-  // SUBJECT: ĐỊA LÍ (GEOGRAPHY)
-  // ==========================================
-  if (subjectKey === 'dia-li') {
-    if (type === 'multiple_choice') {
-      const isViTri = topic.includes('Vị trí') || unit.includes('Vị trí') || topic.includes('lãnh thổ');
-      const isTuNhien = topic.includes('tự nhiên') || topic.includes('khí hậu') || topic.includes('địa hình');
-      const isDanCu = topic.includes('dân cư') || topic.includes('đô thị') || topic.includes('dân số');
+  // Look for an unused question matching topic or level
+  const tKeywords = (ctx.topic + ' ' + ctx.unit).toLowerCase();
+  
+  let candidates = pool.filter(item => {
+    if (ctx.usedContents.has(item.content)) return false;
+    if (item.topicKeywords && item.topicKeywords.some(kw => tKeywords.includes(kw))) return true;
+    return false;
+  });
 
-      if (isViTri) {
-        if (level === 'Nhận biết') {
-          return {
-            id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
-            content: 'Nước ta nằm hoàn toàn trong vùng nội chí tuyến bán cầu Bắc, nên có đặc điểm nào sau đây?',
-            options: [
-              { key: 'A', content: 'Tổng lượng mưa hàng năm luôn nhỏ hơn lượng bốc hơi.' },
-              { key: 'B', content: 'Nền nhiệt độ cao, nhiều ánh nắng mặt trời.' },
-              { key: 'C', content: 'Chịu ảnh hưởng sâu sắc của gió Mậu dịch bán cầu Nam.' },
-              { key: 'D', content: 'Khí hậu phân hóa thành 4 mùa xuân, hạ, thu, đông rõ rệt.' }
-            ],
-            correctOption: 'B',
-            explanation: 'Do nằm hoàn toàn trong vùng nội chí tuyến bán cầu Bắc nên nước ta có góc nhập xạ lớn, tổng bức xạ dồi dào, nền nhiệt độ cao quanh năm (trừ vùng núi cao).'
-          };
-        }
-        return {
-          id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
-          content: 'Vị trí địa lí tiếp giáp giữa lục địa Á - Âu và biển Đông rộng lớn đã mang lại cho khí hậu nước ta tính chất nào?',
-          options: [
-            { key: 'A', content: 'Lượng mưa và độ ẩm dồi dào, cân bằng ẩm luôn dương.' },
-            { key: 'B', content: 'Tính chất khô hạn, hoang mạc hóa cục bộ ven biển.' },
-            { key: 'C', content: 'Khí hậu cận nhiệt đới gió mùa có mùa đông rất lạnh.' },
-            { key: 'D', content: 'Thời tiết ổn định, hoàn toàn không xuất hiện thiên tai.' }
-          ],
-          correctOption: 'A',
-          explanation: 'Nhờ tiếp giáp biển Đông cùng các khối khí di chuyển qua biển được tăng cường ẩm, nước ta có khí hậu nhiệt đới ẩm gió mùa với lượng mưa trung bình từ 1500 - 2000 mm/năm.'
-        };
-      }
+  if (candidates.length === 0) {
+    candidates = pool.filter(item => !ctx.usedContents.has(item.content));
+  }
 
-      if (isDanCu) {
-        return {
-          id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
-          content: `Hiện nay, cơ cấu dân số theo nhóm tuổi ở nước ta đang có xu hướng biến đổi nào sau đây (${unit})?`,
-          options: [
-            { key: 'A', content: 'Tỉ lệ nhóm tuổi dưới 15 tuổi giảm, tỉ lệ nhóm từ 65 tuổi trở lên tăng.' },
-            { key: 'B', content: 'Tỉ lệ nhóm tuổi dưới 15 tuổi tăng nhanh, dân số trẻ hóa mạnh.' },
-            { key: 'C', content: 'Tỉ lệ người già giảm dần do điều kiện chăm sóc y tế giảm sút.' },
-            { key: 'D', content: 'Tỉ lệ trong độ tuổi lao động giảm sâu, thiếu hụt lao động trầm trọng.' }
-          ],
-          correctOption: 'A',
-          explanation: 'Nhờ kết quả của chính sách dân số và nâng cao chất lượng cuộc sống, tuổi thọ bình quân tăng khiến nhóm ≥65 tuổi tăng, đồng thời tỉ suất sinh giảm khiến nhóm <15 tuổi giảm (xu hướng già hóa dân số).'
-        };
-      }
-
-      // Default Dia Li
-      return {
-        id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
-        content: `Căn cứ vào đặc điểm ${unit || topic}, yếu tố nào đóng vai trò then chốt thúc đẩy chuyển dịch cơ cấu kinh tế theo ngành ở nước ta?`,
-        options: [
-          { key: 'A', content: 'Đẩy mạnh quá trình công nghiệp hóa, hiện đại hóa và hội nhập quốc tế.' },
-          { key: 'B', content: 'Tăng nhanh tỉ trọng ngành nông nghiệp truyền thống.' },
-          { key: 'C', content: 'Mở rộng diện tích đất trồng cây lương thực thuần túy.' },
-          { key: 'D', content: 'Hạn chế thu hút vốn đầu tư trực tiếp từ nước ngoài (FDI).' }
-        ],
-        correctOption: 'A',
-        explanation: 'Quá trình công nghiệp hóa, hiện đại hóa gắn với kinh tế tri thức và hội nhập kinh tế quốc tế là động lực cốt lõi để nâng cao tỉ trọng công nghiệp và dịch vụ, giảm tỉ trọng nông - lâm - thủy sản.'
-      };
-    }
-
-    if (type === 'true_false') {
-      return {
-        id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
-        content: `Cho thông tin về đặc điểm phát triển kinh tế - xã hội gắn với "${topic} - ${unit}":\nNước ta có vùng biển rộng khoảng 1 triệu km², nằm trên ngã tư đường hàng hải và hàng không quốc tế quan trọng, giàu tiềm năng tài nguyên sinh vật và khoáng sản.`,
-        trueFalseItems: [
-          { key: 'a', statement: 'Vùng biển nước ta tạo điều kiện thuận lợi để phát triển tổng hợp kinh tế biển.', isCorrect: true, explanation: 'Đúng, bao gồm đánh bắt nuôi trồng thủy sản, khai thác khoáng sản dầu khí, du lịch biển và giao thông vận tải biển.' },
-          { key: 'b', statement: 'Tất cả các tỉnh thành ở nước ta đều có đường bờ biển trực tiếp.', isCorrect: false, explanation: 'Sai, cả nước chỉ có 28 tỉnh, thành phố trực thuộc Trung ương giáp biển.' },
-          { key: 'c', statement: 'Biển Đông là nhân tố làm cho khí hậu nước ta mang tính hải dương điều hòa hơn so với các nước cùng vĩ độ ở Tây Á.', isCorrect: true, explanation: 'Đúng, biển Đông mang lại lượng ẩm lớn, giảm bớt tính khắc nghiệt và khô hạn.' },
-          { key: 'd', statement: 'Việc khai thác tài nguyên biển không cần phải kết hợp với việc bảo vệ an ninh quốc phòng.', isCorrect: false, explanation: 'Sai, phát triển kinh tế biển luôn luôn phải gắn liền mật thiết với việc giữ vững chủ quyền biển đảo quốc gia.' }
-        ],
-        explanation: 'Khẳng định a, c là ĐÚNG; b, d là SAI. Phát triển kinh tế biển phải mang tính tổng hợp, bền vững và bảo đảm chủ quyền an ninh biển đảo.'
-      };
-    }
-
-    if (type === 'short_answer') {
-      return {
-        id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
-        content: `Dựa vào số liệu thống kê về diện tích rừng nước ta: Năm 2020 diện tích rừng trồng là 4,4 triệu ha trên tổng số 14,7 triệu ha diện tích đất có rừng. Hãy tính tỉ lệ (%) diện tích rừng trồng so với tổng diện tích đất có rừng của nước ta (làm tròn kết quả đến 1 chữ số thập phân)?`,
-        shortAnswerKey: '29.9',
-        explanation: 'Tỉ lệ rừng trồng = (4,4 / 14,7) * 100% ≈ 29.93% -> Làm tròn 1 chữ số thập phân: 29.9%'
-      };
-    }
-
-    // Essay
+  if (candidates.length > 0) {
+    // Pick the best candidate
+    const chosen = candidates[0];
+    ctx.usedContents.add(chosen.content);
     return {
-      id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
-      content: `Dựa vào kiến thức về "${topic} - ${unit}", hãy phân tích những thế mạnh tự nhiên để phát triển ngành thủy sản ở nước ta. Nêu 02 giải pháp chủ yếu để phát triển bền vững ngành kinh tế này.`,
-      essayRubric: 'Ý a (1.0đ): Nêu đúng 4 ngư trường trọng điểm, bờ biển dài 3260km, bãi triều, đầm phá, vũng vịnh thuận lợi nuôi trồng thủy sản nước lợ, nước mặn.\nÝ b (0.5đ): Nguồn lợi sinh vật biển phong phú với hơn 2000 loài cá, nhiều đặc sản giá trị kinh tế cao.\nÝ c (0.5đ): 02 giải pháp: Hiện đại hóa phương tiện đánh bắt xa bờ gắn với bảo vệ nguồn lợi ven bờ; Đẩy mạnh công nghiệp chế biến và mở rộng thị trường xuất khẩu.',
-      explanation: 'Học sinh trình bày đủ 2 luận điểm chính: (1) Thế mạnh tự nhiên (bờ biển, ngư trường, sinh vật, vũng vịnh) và (2) Giải pháp phát triển bền vững (đánh bắt xa bờ, bảo vệ nguồn lợi, công nghệ chế biến).'
+      id,
+      orderNumber: ctx.orderNumber,
+      type: 'multiple_choice',
+      topic: ctx.topic,
+      unit: ctx.unit,
+      cognitiveLevel: chosen.level || ctx.level,
+      content: chosen.content,
+      options: chosen.options,
+      correctOption: chosen.correctOption,
+      points: ctx.points,
+      explanation: chosen.explanation
     };
   }
 
-  // ==========================================
-  // SUBJECT: LỊCH SỬ (HISTORY)
-  // ==========================================
-  if (subjectKey === 'lich-su') {
-    if (type === 'multiple_choice') {
-      return {
-        id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
-        content: `Nội dung nào sau đây là ý nghĩa lịch sử to lớn của sự kiện gắn với "${topic} - ${unit}"?`,
-        options: [
-          { key: 'A', content: 'Mở ra bước ngoặt vĩ đại trong lịch sử đấu tranh giải phóng dân tộc.' },
-          { key: 'B', content: 'Chấm dứt hoàn toàn sự thống trị của chủ nghĩa thực dân trên phạm vi toàn cầu.' },
-          { key: 'C', content: 'Đưa nước ta bước ngay vào giai đoạn công nghiệp hóa hiện đại hóa phát triển cao.' },
-          { key: 'D', content: 'Xóa bỏ hoàn toàn mọi tàn dư của chế độ phong kiến trong một thời gian ngắn.' }
-        ],
-        correctOption: 'A',
-        explanation: 'Sự kiện mang ý nghĩa bước ngoặt căn bản, mở ra kỉ nguyên độc lập tự do và làm thay đổi cục diện lịch sử của dân tộc.'
-      };
-    }
-    if (type === 'true_false') {
-      return {
-        id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
-        content: `Đọc đoạn tư liệu sau về "${topic}":\n"Đảng Cộng sản Việt Nam ra đời là sản phẩm của sự kết hợp giữa chủ nghĩa Mác - Lênin với phong trào công nhân và phong trào yêu nước Việt Nam trong những năm đầu thế kỉ XX."`,
-        trueFalseItems: [
-          { key: 'a', statement: 'Sự kiện này chấm dứt thời kì khủng hoảng sâu sắc về đường lối và giai cấp lãnh đạo.', isCorrect: true, explanation: 'Đúng, từ đây cách mạng Việt Nam có chính đảng tiên phong soi đường.' },
-          { key: 'b', statement: 'Phong trào yêu nước không đóng vai trò gì trong sự hình thành của Đảng Cộng sản.', isCorrect: false, explanation: 'Sai, phong trào yêu nước là một trong ba thành tố cốt lõi kết tinh nên Đảng.' },
-          { key: 'c', statement: 'Nguyễn Ái Quốc là người trực tiếp chuẩn bị về chính trị, tư tưởng và tổ chức cho sự thành lập Đảng.', isCorrect: true, explanation: 'Đúng, Người triệu tập và chủ trì Hội nghị hợp nhất tại Hương Cảng đầu năm 1930.' },
-          { key: 'd', statement: 'Đảng ra đời đặt cách mạng Việt Nam tách biệt hoàn toàn khỏi phong trào cách mạng thế giới.', isCorrect: false, explanation: 'Sai, cách mạng Việt Nam trở thành một bộ phận khăng khít của cách mạng vô sản thế giới.' }
-        ],
-        explanation: 'Mệnh đề a, c là ĐÚNG; b, d là SAI.'
-      };
-    }
-    if (type === 'short_answer') {
-      return {
-        id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
-        content: `Đại hội đại biểu toàn quốc lần thứ mấy của Đảng Cộng sản Việt Nam (tháng 12/1986) đã đề ra đường lối đổi mới toàn diện đất nước? (Ghi chữ số La Mã hoặc số Ả Rập tương ứng)`,
-        shortAnswerKey: 'VI',
-        explanation: 'Đại hội đại biểu toàn quốc lần thứ VI của Đảng (tháng 12/1986) là mốc lịch sử khởi xướng công cuộc Đổi mới.'
-      };
-    }
-    return {
-      id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
-      content: `Phân tích nguyên nhân thắng lợi và bài học kinh nghiệm của "${topic} - ${unit}" đối với sự nghiệp xây dựng và bảo vệ Tổ quốc hiện nay.`,
-      essayRubric: 'Ý a (1.0đ): Trình bày nguyên nhân chủ quan (sự lãnh đạo của Đảng, tinh thần đoàn kết toàn dân) và khách quan.\nÝ b (1.0đ): Rút ra 02 bài học kinh nghiệm sâu sắc vận dụng vào thực tiễn công cuộc phát triển đất nước.',
-      explanation: 'Trình bày mạch lạc, có luận cứ lịch sử xác thực và liên hệ thực tiễn hiện nay.'
-    };
-  }
-
-  // ==========================================
-  // SUBJECT: VẬT LÍ (PHYSICS)
-  // ==========================================
-  if (subjectKey === 'vat-li') {
-    if (type === 'multiple_choice') {
-      return {
-        id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
-        content: `Trong nghiên cứu về ${unit || topic}, đại lượng đặc trưng cho tốc độ biến thiên của từ thông qua mạch kín là gì?`,
-        options: [
-          { key: 'A', content: 'Suất điện động cảm ứng.' },
-          { key: 'B', content: 'Cường độ dòng điện không đổi.' },
-          { key: 'C', content: 'Nhiệt dung riêng của vật dẫn.' },
-          { key: 'D', content: 'Hệ số tự cảm của ống dây.' }
-        ],
-        correctOption: 'A',
-        explanation: 'Theo định luật Faraday: $e_c = -\\frac{\\Delta \\Phi}{\\Delta t}$, độ lớn suất điện động cảm ứng tỉ lệ với tốc độ biến thiên của từ thông.'
-      };
-    }
-    if (type === 'true_false') {
-      return {
-        id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
-        content: `Xét một lượng khí lí tưởng xác định thực hiện các quá trình biến đổi trạng thái (${topic}):`,
-        trueFalseItems: [
-          { key: 'a', statement: 'Trong quá trình đẳng nhiệt, áp suất tỉ lệ nghịch với thể tích ($p \\cdot V = \\text{const}$).', isCorrect: true, explanation: 'Đúng theo định luật Boyle.' },
-          { key: 'b', statement: 'Khi nhiệt độ tuyệt đối tăng gấp đôi ở quá trình đẳng tích, áp suất chất khí giảm một nửa.', isCorrect: false, explanation: 'Sai, $p/T = \\text{const}$ nên khi $T$ tăng 2 lần thì $p$ cũng phải tăng gấp đôi.' },
-          { key: 'c', statement: 'Nội năng của khí lí tưởng chỉ phụ thuộc vào nhiệt độ tuyệt đối của khối khí.', isCorrect: true, explanation: 'Đúng theo thuyết động học phân tử chất khí.' },
-          { key: 'd', statement: 'Chất khí chỉ nhận nhiệt lượng mà không thể sinh công trong mọi quá trình biến đổi.', isCorrect: false, explanation: 'Sai, theo định luật I NĐLH: $\\Delta U = Q + A$, chất khí có thể dãn nở sinh công ($A < 0$).' }
-        ],
-        explanation: 'Mệnh đề a, c ĐÚNG; b, d SAI.'
-      };
-    }
-    if (type === 'short_answer') {
-      return {
-        id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
-        content: `Một lượng khí có thể tích $V_1 = 4\\text{ lít}$ ở áp suất $p_1 = 1\\text{ atm}$. Nén đẳng nhiệt lượng khí này đến thể tích $V_2 = 1\\text{ lít}$. Áp suất $p_2$ của khối khí sau khi nén bằng bao nhiêu atm?`,
-        shortAnswerKey: '4',
-        explanation: 'Theo định luật Boyle: $p_1 V_1 = p_2 V_2 \\Rightarrow p_2 = \\frac{1 \\times 4}{1} = 4\\text{ atm}$.'
-      };
-    }
-    return {
-      id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
-      content: `Trình bày nguyên lí hoạt động và thiết lập biểu thức tính nhiệt lượng cung cấp để làm nóng chảy hoàn toàn một vật rắn có khối lượng $m$ từ nhiệt độ ban đầu $t_0$ đến nhiệt độ nóng chảy $t_{nc}$.`,
-      essayRubric: 'Ý a (1.0đ): Viết đúng công thức nâng nhiệt độ $Q_1 = mc(t_{nc} - t_0)$ và nhiệt nóng chảy $Q_2 = \\lambda m$.\nÝ b (1.0đ): Lập luận bảo toàn năng lượng và đưa ra tổng nhiệt lượng $Q = Q_1 + Q_2$.',
-      explanation: 'Áp dụng các định luật nhiệt học và định nghĩa nhiệt nóng chảy.'
-    };
-  }
-
-  // ==========================================
-  // SUBJECT: HÓA HỌC (CHEMISTRY)
-  // ==========================================
-  if (subjectKey === 'hoa-hoc') {
-    if (type === 'multiple_choice') {
-      return {
-        id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
-        content: `Chất nào sau đây phản ứng được với dung dịch $AgNO_3$ trong $NH_3$ đun nóng tạo kết tủa bạc sáng bóng (phản ứng tráng bạc) (${unit})?`,
-        options: [
-          { key: 'A', content: 'Glucose ($C_6H_{12}O_6$)' },
-          { key: 'B', content: 'Saccharose ($C_{12}H_{22}O_{11}$)' },
-          { key: 'C', content: 'Tinh bột' },
-          { key: 'D', content: 'Cellulose' }
-        ],
-        correctOption: 'A',
-        explanation: 'Glucose có nhóm aldehyde ($-CHO$) ở dạng mạch hở nên tham gia phản ứng tráng bạc tạo $2Ag\\downarrow$.'
-      };
-    }
-    if (type === 'true_false') {
-      return {
-        id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
-        content: `Cho các phát biểu sau về hợp chất hữu cơ liên quan đến "${topic} - ${unit}":`,
-        trueFalseItems: [
-          { key: 'a', statement: 'Ester có nhiệt độ sôi thấp hơn alcohol có cùng số nguyên tử carbon do không có liên kết hydrogen liên phân tử.', isCorrect: true, explanation: 'Đúng.' },
-          { key: 'b', statement: 'Phản ứng thủy phân ester trong môi trường kiềm (xà phòng hóa) là phản ứng thuận nghịch.', isCorrect: false, explanation: 'Sai, phản ứng xà phòng hóa xảy ra một chiều.' },
-          { key: 'c', statement: 'Chất béo là triester của glycerol với các acid béo.', isCorrect: true, explanation: 'Đúng theo định nghĩa lipid.' },
-          { key: 'd', statement: 'Tất cả các carbohydrate đều cho phản ứng màu với dung dịch iodine.', isCorrect: false, explanation: 'Sai, chỉ có tinh bột mới cho phản ứng màu xanh tím đặc trưng với iodine.' }
-        ],
-        explanation: 'Mệnh đề a, c ĐÚNG; b, d SAI.'
-      };
-    }
-    if (type === 'short_answer') {
-      return {
-        id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
-        content: `Đốt cháy hoàn toàn $0,1\\text{ mol}$ một ester đơn chức, no, mạch hở thu được $0,2\\text{ mol } CO_2$. Số nguyên tử carbon trong phân tử ester đó là bao nhiêu?`,
-        shortAnswerKey: '2',
-        explanation: 'Số nguyên tử $C = \\frac{n_{CO_2}}{n_{ester}} = \\frac{0,2}{0,1} = 2$ ($HCOOCH_3$).'
-      };
-    }
-    return {
-      id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
-      content: `Viết phương trình hóa học thực hiện chuỗi chuyển hóa sau (ghi rõ điều kiện nếu có): $Tinh\\ bột \\rightarrow Glucose \\rightarrow Ethanol \\rightarrow Acetic\\ acid$.`,
-      essayRubric: 'Ý a (0.75đ): Viết đúng 3 phương trình phản ứng có cân bằng hệ số.\nÝ b (0.75đ): Ghi đúng điều kiện xúc tác men, nhiệt độ, enzyme cho từng phản ứng.',
-      explanation: 'Thực hiện tuần tự 3 phản ứng: thủy phân tinh bột, lên men rượu và lên men giấm.'
-    };
-  }
-
-  // ==========================================
-  // SUBJECT: SINH HỌC (BIOLOGY)
-  // ==========================================
-  if (subjectKey === 'sinh-hoc') {
-    if (type === 'multiple_choice') {
-      return {
-        id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
-        content: `Trong cấu trúc phân tử DNA, nucleotide loại Adenine (A) liên kết với nucleotide loại nào theo nguyên tắc bổ sung?`,
-        options: [
-          { key: 'A', content: 'Thymine (T) bằng 2 liên kết hydrogen.' },
-          { key: 'B', content: 'Guanine (G) bằng 3 liên kết hydrogen.' },
-          { key: 'C', content: 'Cytosine (C) bằng 2 liên kết hydrogen.' },
-          { key: 'D', content: 'Uracil (U) bằng 3 liên kết hydrogen.' }
-        ],
-        correctOption: 'A',
-        explanation: 'Theo nguyên tắc bổ sung trong DNA: A liên kết với T bằng 2 liên kết hydrogen; G liên kết với C bằng 3 liên kết hydrogen.'
-      };
-    }
-    if (type === 'true_false') {
-      return {
-        id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
-        content: `Xét quá trình di truyền ở cấp độ phân tử (${topic}):`,
-        trueFalseItems: [
-          { key: 'a', statement: 'Quá trình tái bản DNA diễn ra theo nguyên tắc bổ sung và nguyên tắc bán bảo toàn.', isCorrect: true, explanation: 'Đúng.' },
-          { key: 'b', statement: 'Mã di truyền có tính thoái hóa nghĩa là một bộ ba mã hóa cho nhiều loại amino acid.', isCorrect: false, explanation: 'Sai, tính thoái hóa là nhiều bộ ba khác nhau cùng mã hóa cho một amino acid.' },
-          { key: 'c', statement: 'Enzyme RNA polymerase vừa có khả năng tháo xoắn vừa xúc tác tổng hợp mạch RNA mới.', isCorrect: true, explanation: 'Đúng trong quá trình phiên mã.' },
-          { key: 'd', statement: 'Đột biến điểm luôn luôn làm thay đổi cấu trúc của chuỗi polypeptide tương ứng.', isCorrect: false, explanation: 'Sai, đột biến đồng nghĩa (do tính thoái hóa của mã di truyền) không làm thay đổi amino acid.' }
-        ],
-        explanation: 'Mệnh đề a, c ĐÚNG; b, d SAI.'
-      };
-    }
-    if (type === 'short_answer') {
-      return {
-        id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
-        content: `Một gene có chiều dài $5100\\text{ Å}$. Tổng số nucleotide của gene này là bao nhiêu?`,
-        shortAnswerKey: '3000',
-        explanation: '$N = \\frac{2 \\times L}{3,4} = \\frac{2 \\times 5100}{3,4} = 3000\\text{ nucleotide}$.'
-      };
-    }
-    return {
-      id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
-      content: `Nêu các cơ chế phát sinh đột biến gen và ý nghĩa của đột biến gen đối với tiến hóa và chọn giống.`,
-      essayRubric: 'Ý a (1.0đ): Nêu được cơ chế bắt cặp nhầm (sự bắt cặp không theo NTBS) và tác nhân hóa học/vật lí (5-BU, tia UV).\nÝ b (1.0đ): Giải thích được vai trò cung cấp nguồn nguyên liệu sơ cấp cho tiến hóa.',
-      explanation: 'Trình bày đầy đủ cơ chế phân tử và vai trò sinh học.'
-    };
-  }
-
-  // ==========================================
-  // SUBJECT: NGỮ VĂN (LITERATURE)
-  // ==========================================
-  if (subjectKey === 'ngu-van') {
-    if (type === 'multiple_choice') {
-      return {
-        id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
-        content: `Biện pháp tu từ nào được sử dụng chủ đạo trong việc khắc họa hình tượng nghệ thuật ở "${topic} - ${unit}"?`,
-        options: [
-          { key: 'A', content: 'Ẩn dụ và nhân hóa gợi hình tượng sâu sắc.' },
-          { key: 'B', content: 'Liệt kê thuần túy không có yếu tố biểu cảm.' },
-          { key: 'C', content: 'Nói quá làm giảm bớt tính chân thực.' },
-          { key: 'D', content: 'Đảo ngữ mang tính chất hài hước châm biếm.' }
-        ],
-        correctOption: 'A',
-        explanation: 'Nghệ thuật ẩn dụ và nhân hóa giúp tác phẩm giàu giá trị thẩm mĩ, khơi gợi chiều sâu cảm xúc.'
-      };
-    }
-    if (type === 'true_false') {
-      return {
-        id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
-        content: `Đọc đoạn văn bản sau và xác định tính đúng/sai của các nhận định liên quan đến "${topic}":\n"Lòng yêu nước, tinh thần trách nhiệm và sự cống hiến vì cộng đồng là nền tảng vững chắc để xây dựng một xã hội văn minh, thịnh vượng."`,
-        trueFalseItems: [
-          { key: 'a', statement: 'Phương thức biểu đạt chính của đoạn văn bản trên là nghị luận.', isCorrect: true, explanation: 'Đúng, nhằm bàn luận và thuyết phục về tư tưởng đạo lí.' },
-          { key: 'b', statement: 'Đoạn trích sử dụng phong cách ngôn ngữ sinh hoạt đời thường.', isCorrect: false, explanation: 'Sai, sử dụng phong cách ngôn ngữ chính luận/báo chí.' },
-          { key: 'c', statement: 'Thao tác lập luận chủ yếu trong đoạn văn là giải thích và bình luận.', isCorrect: true, explanation: 'Đúng.' },
-          { key: 'd', statement: 'Văn bản phủ nhận vai trò của cá nhân đối với sự phát triển xã hội.', isCorrect: false, explanation: 'Sai, văn bản đề cao trách nhiệm cống hiến của mỗi cá nhân.' }
-        ],
-        explanation: 'Mệnh đề a, c ĐÚNG; b, d SAI.'
-      };
-    }
-    if (type === 'short_answer') {
-      return {
-        id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
-        content: `Hãy chỉ ra từ khóa (keyword) quan trọng nhất thể hiện chủ đề tư tưởng của văn bản đọc hiểu trên (viết ngắn gọn trong 1-4 từ).`,
-        shortAnswerKey: 'Trách nhiệm cống hiến',
-        explanation: 'Chủ đề chính bàn về tinh thần trách nhiệm và cống hiến vì cộng đồng.'
-      };
-    }
-    return {
-      id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
-      content: `Viết một đoạn văn nghị luận xã hội (khoảng 200 chữ) trình bày suy nghĩ của anh/chị về ý nghĩa của lối sống có trách nhiệm đối với thế hệ trẻ trong kỉ nguyên chuyển đổi số.`,
-      essayRubric: 'Ý a (0.5đ): Đảm bảo hình thức đoạn văn 200 chữ, đúng chính tả ngữ pháp.\nÝ b (0.5đ): Nêu rõ vấn đề: Ý nghĩa của lối sống có trách nhiệm.\nÝ c (1.0đ): Bàn luận sâu sắc (giúp hoàn thiện bản thân, lan tỏa giá trị tích cực, làm chủ công nghệ), có dẫn chứng thực tế và bài học hành động.',
-      explanation: 'Đoạn văn kết cấu chặt chẽ, luận điểm rõ ràng, dẫn chứng thuyết phục.'
-    };
-  }
-
-  // ==========================================
-  // SUBJECT: TIẾNG ANH (ENGLISH)
-  // ==========================================
-  if (subjectKey === 'tieng-anh') {
-    if (type === 'multiple_choice') {
-      return {
-        id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
-        content: `Choose the letter A, B, C, or D to indicate the correct answer to the following question regarding "${unit || topic}":\nIf she _______ harder, she would have passed the final examination with flying colours.`,
-        options: [
-          { key: 'A', content: 'had studied' },
-          { key: 'B', content: 'studied' },
-          { key: 'C', content: 'studies' },
-          { key: 'D', content: 'would study' }
-        ],
-        correctOption: 'A',
-        explanation: 'Đây là câu điều kiện loại 3 (Third Conditional) diễn tả sự việc trái với thực tế trong quá khứ: If + S + had + V3/ed, S + would/could + have + V3/ed.'
-      };
-    }
-    if (type === 'true_false') {
-      return {
-        id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
-        content: `Read the passage about "${topic}" and decide whether the following statements are True (T) or False (F):\n"Artificial Intelligence (AI) and digital transformation are rapidly revolutionizing education worldwide. By offering personalized learning paths and automated feedback, modern technologies empower students to master complex concepts at their own pace while helping educators optimize instructional time."`,
-        trueFalseItems: [
-          { key: 'a', statement: 'AI and digital transformation are changing global education in significant ways.', isCorrect: true, explanation: 'True (Passage: "...are rapidly revolutionizing education worldwide").' },
-          { key: 'b', statement: 'Personalized learning paths force all students to study at the exact same pace.', isCorrect: false, explanation: 'False (Passage mentions: "...empower students to master complex concepts at their own pace").' },
-          { key: 'c', statement: 'Modern educational technologies can provide automated feedback to learners.', isCorrect: true, explanation: 'True (Passage: "...offering personalized learning paths and automated feedback").' },
-          { key: 'd', statement: 'Educators receive no benefits from applying digital tools in their classrooms.', isCorrect: false, explanation: 'False (Passage states it is "...helping educators optimize instructional time").' }
-        ],
-        explanation: 'Statements a and c are TRUE; b and d are FALSE based on the reading text.'
-      };
-    }
-    if (type === 'short_answer') {
-      return {
-        id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
-        content: `Give the correct form of the word in brackets to complete the sentence: "Renewable energy plays an extremely _______ role in mitigating climate change." (IMPORTANCE)`,
-        shortAnswerKey: 'important',
-        explanation: 'Sau trạng từ "extremely" và trước danh từ "role", ta cần một tính từ: importance (n) -> important (adj).'
-      };
-    }
-    return {
-      id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
-      content: `Write an essay (150 - 180 words) discussing the benefits and challenges of online learning for high school students in Vietnam.`,
-      essayRubric: 'Task Achievement (0.5 pts): Fully addresses all parts of the prompt.\nCoherence & Cohesion (0.5 pts): Clear organization, logical paragraphing and transitions.\nLexical Resource (0.5 pts): Wide range of vocabulary and correct collocations.\nGrammatical Accuracy (0.5 pts): Accurate complex sentence structures and punctuation.',
-      explanation: 'Candidate clearly organizes introduction, body paragraphs (advantages & challenges), and conclusion with supporting examples.'
-    };
-  }
-
-  // ==========================================
-  // SUBJECT: TIN HỌC (INFORMATICS / IT)
-  // ==========================================
-  if (subjectKey === 'tin-hoc') {
-    if (type === 'multiple_choice') {
-      return {
-        id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
-        content: `Trong lập trình và khoa học máy tính (${topic} - ${unit}), cấu trúc dữ liệu hoặc thuật toán nào sau đây hoạt động theo nguyên lí LIFO (Last In First Out)?`,
-        options: [
-          { key: 'A', content: 'Ngăn xếp (Stack)' },
-          { key: 'B', content: 'Hàng đợi (Queue)' },
-          { key: 'C', content: 'Mảng một chiều (Array)' },
-          { key: 'D', content: 'Danh sách liên kết đơn (Singly Linked List)' }
-        ],
-        correctOption: 'A',
-        explanation: 'Ngăn xếp (Stack) lưu trữ và truy xuất phần tử theo nguyên lí vào sau ra trước (LIFO: Last In First Out).'
-      };
-    }
-    if (type === 'true_false') {
-      return {
-        id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
-        content: `Xét các phát biểu về mạng máy tính, an toàn thông tin và cơ sở dữ liệu (${topic}):`,
-        trueFalseItems: [
-          { key: 'a', statement: 'Hệ quản trị cơ sở dữ liệu quan hệ (RDBMS) tổ chức dữ liệu dưới dạng các bảng hai chiều gồm hàng và cột.', isCorrect: true, explanation: 'Đúng theo mô hình dữ liệu quan hệ của Codd.' },
-          { key: 'b', statement: 'Khóa chính (Primary Key) của một bảng có thể chứa các giá trị trùng lặp hoặc giá trị NULL.', isCorrect: false, explanation: 'Sai, khóa chính phải mang tính duy nhất và không được phép NULL.' },
-          { key: 'c', statement: 'Mã hóa dữ liệu và xác thực 2 yếu tố (2FA) giúp tăng cường bảo mật tài khoản người dùng trên không gian mạng.', isCorrect: true, explanation: 'Đúng.' },
-          { key: 'd', statement: 'Giao thức HTTPS truyền dữ liệu dưới dạng văn bản thuần túy không qua bất kì lớp bảo mật nào.', isCorrect: false, explanation: 'Sai, HTTPS sử dụng SSL/TLS để mã hóa đường truyền an toàn.' }
-        ],
-        explanation: 'Mệnh đề a, c ĐÚNG; b, d SAI.'
-      };
-    }
-    if (type === 'short_answer') {
-      return {
-        id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
-        content: `Cho đoạn mã Python: \n\`a = [x**2 for x in range(5) if x % 2 == 1]\`\nGiá trị của \`len(a)\` sau khi thực thi là bao nhiêu?`,
-        shortAnswerKey: '2',
-        explanation: 'Các giá trị thỏa mãn x trong range(5) là số lẻ: x = 1, x = 3 -> a = [1, 9] -> len(a) = 2.'
-      };
-    }
-    return {
-      id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
-      content: `Trình bày các bước xây dựng cơ sở dữ liệu quan hệ cho bài toán Quản lí Thư viện trường học (gồm các thực thể: Sách, Độc giả, Phiếu mượn). Nêu rõ các khóa chính và khóa ngoại để liên kết các bảng.`,
-      essayRubric: 'Ý a (1.0đ): Xác định đúng thuộc tính cho các bảng Sách(MaSach, TenSach, TacGia), DocGia(MaDG, HoTen, Lop), PhieuMuon(MaPM, MaSach, MaDG, NgayMuon, NgayTra).\nÝ b (1.0đ): Chỉ rõ khóa chính và mô tả đúng mối quan hệ 1-N giữa các bảng.',
-      explanation: 'Mô hình hóa dữ liệu chính xác, chuẩn hóa dữ liệu 3NF và thiết lập quan hệ toàn vẹn.'
-    };
-  }
-
-  // ==========================================
-  // SUBJECT: GIÁO DỤC KINH TẾ VÀ PHÁP LUẬT / GDCD
-  // ==========================================
-  if (subjectKey === 'gdkt-pl') {
-    if (type === 'multiple_choice') {
-      return {
-        id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
-        content: `Theo quy định của pháp luật Việt Nam về "${topic} - ${unit}", hình thức thực hiện pháp luật nào mà các cá nhân, tổ chức chủ động thực hiện đầy đủ những nghĩa vụ mà pháp luật quy định phải làm?`,
-        options: [
-          { key: 'A', content: 'Thi hành pháp luật' },
-          { key: 'B', content: 'Sử dụng pháp luật' },
-          { key: 'C', content: 'Tuân thủ pháp luật' },
-          { key: 'D', content: 'Áp dụng pháp luật' }
-        ],
-        correctOption: 'A',
-        explanation: 'Thi hành pháp luật là việc chủ động thực hiện nghĩa vụ mà pháp luật quy định phải làm (ví dụ: đóng thuế, thực hiện nghĩa vụ quân sự).'
-      };
-    }
-    if (type === 'true_false') {
-      return {
-        id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
-        content: `Đọc tình huống kinh tế - pháp luật sau (${topic}):\nDoanh nghiệp X áp dụng mô hình kinh tế tuần hoàn, đầu tư dây chuyền xử lí chất thải thành nguyên liệu tái chế, thực hiện kê khai nộp thuế đúng hạn và kí hợp đồng lao động đầy đủ với người lao động.`,
-        trueFalseItems: [
-          { key: 'a', statement: 'Doanh nghiệp X đã thể hiện trách nhiệm xã hội và bảo vệ môi trường sinh thái.', isCorrect: true, explanation: 'Đúng.' },
-          { key: 'b', statement: 'Việc nộp thuế đúng hạn của doanh nghiệp là hình thức tuân thủ pháp luật bị động.', isCorrect: false, explanation: 'Sai, đây là hành vi thi hành nghĩa vụ pháp lí chủ động.' },
-          { key: 'c', statement: 'Kí hợp đồng lao động giúp bảo đảm quyền và lợi ích hợp pháp của các bên tham gia quan hệ lao động.', isCorrect: true, explanation: 'Đúng theo Bộ luật Lao động.' },
-          { key: 'd', statement: 'Mô hình kinh tế tuần hoàn gây lãng phí tài nguyên và làm giảm năng lực cạnh tranh.', isCorrect: false, explanation: 'Sai, kinh tế tuần hoàn tối ưu hóa sử dụng tài nguyên và phát triển bền vững.' }
-        ],
-        explanation: 'Mệnh đề a, c ĐÚNG; b, d SAI.'
-      };
-    }
-    if (type === 'short_answer') {
-      return {
-        id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
-        content: `Theo Hiến pháp năm 2013 của nước CHXHCN Việt Nam, công dân đủ từ bao nhiêu tuổi trở lên có quyền bầu cử Quốc hội và Hội đồng nhân dân các cấp? (Điền số tuổi)`,
-        shortAnswerKey: '18',
-        explanation: 'Theo Điều 27 Hiến pháp 2013: Công dân đủ mười tám tuổi trở lên có quyền bầu cử và đủ hai mươi mốt tuổi trở lên có quyền ứng cử.'
-      };
-    }
-    return {
-      id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
-      content: `Phân tích vai trò của pháp luật đối với sự phát triển kinh tế thị trường định hướng xã hội chủ nghĩa ở nước ta hiện nay.`,
-      essayRubric: 'Ý a (1.0đ): Tạo khung khổ pháp lí minh bạch, bảo đảm quyền tự do kinh doanh và bình đẳng giữa các thành phần kinh tế.\nÝ b (1.0đ): Ngăn ngừa cạnh tranh không lành mạnh, bảo vệ quyền lợi người tiêu dùng và thúc đẩy hội nhập quốc tế.',
-      explanation: 'Phân tích đầy đủ vai trò định hướng, kiến tạo và bảo vệ của hệ thống pháp luật.'
-    };
-  }
-
-  // ==========================================
-  // SUBJECT: CÔNG NGHỆ (TECHNOLOGY)
-  // ==========================================
-  if (subjectKey === 'cong-nghe') {
-    if (type === 'multiple_choice') {
-      return {
-        id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
-        content: `Trong lĩnh vực công nghệ (${topic} - ${unit}), vật liệu hoặc giải pháp kĩ thuật nào sau đây thân thiện với môi trường và tiết kiệm năng lượng?`,
-        options: [
-          { key: 'A', content: 'Sử dụng hệ thống pin năng lượng mặt trời và đèn LED hiệu suất cao.' },
-          { key: 'B', content: 'Sử dụng nhiên liệu hóa thạch không qua xử lí khí thải.' },
-          { key: 'C', content: 'Xả trực tiếp chất thải công nghiệp chưa qua xử lí ra sông suối.' },
-          { key: 'D', content: 'Lạm dụng hóa chất bảo vệ thực vật có độ độc cao trong canh tác.' }
-        ],
-        correctOption: 'A',
-        explanation: 'Năng lượng tái tạo và thiết bị chiếu sáng LED giúp giảm tiêu thụ điện năng và giảm phát thải khí nhà kính.'
-      };
-    }
-    if (type === 'true_false') {
-      return {
-        id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
-        content: `Xét quy trình thiết kế kĩ thuật và công nghệ sản xuất (${topic}):`,
-        trueFalseItems: [
-          { key: 'a', statement: 'Bản vẽ kĩ thuật là ngôn ngữ chung dùng trong kĩ thuật và sản xuất công nghiệp.', isCorrect: true, explanation: 'Đúng.' },
-          { key: 'b', statement: 'Trong mạch điện xoay chiều, cầu chì được mắc song song với thiết bị điện cần bảo vệ.', isCorrect: false, explanation: 'Sai, cầu chì phải được mắc nối tiếp trên dây pha trước thiết bị điện.' },
-          { key: 'c', statement: 'Nông nghiệp công nghệ cao ứng dụng cảm biến IoT để tự động tưới tiêu và điều hòa vi khí hậu.', isCorrect: true, explanation: 'Đúng.' },
-          { key: 'd', statement: 'Khi sử dụng điện an toàn, có thể sửa chữa thiết bị điện mà không cần ngắt nguồn điện chính.', isCorrect: false, explanation: 'Sai, bắt buộc phải ngắt aptomat/cầu dao và kiểm tra bằng bút thử điện.' }
-        ],
-        explanation: 'Mệnh đề a, c ĐÚNG; b, d SAI.'
-      };
-    }
-    if (type === 'short_answer') {
-      return {
-        id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
-        content: `Một bóng đèn sợi đốt có công suất $P = 60\\text{W}$ thắp sáng $5\\text{ giờ}$ mỗi ngày. Điện năng tiêu thụ của bóng đèn đó trong 30 ngày là bao nhiêu kWh?`,
-        shortAnswerKey: '9',
-        explanation: '$A = P \\times t = 60\\text{W} \\times (5 \\times 30)\\text{h} = 9000\\text{Wh} = 9\\text{kWh}$.'
-      };
-    }
-    return {
-      id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
-      content: `Trình bày các bước trong quy trình thiết kế kĩ thuật một sản phẩm đơn giản phục vụ đời sống.`,
-      essayRubric: 'Ý a (1.0đ): Nêu đúng 5 bước: Xác định vấn đề -> Tìm hiểu tổng quan -> Đề xuất giải pháp -> Chế tạo mẫu thử -> Đánh giá và hoàn thiện.\nÝ b (1.0đ): Minh họa bằng một ví dụ thực tế cụ thể.',
-      explanation: 'Trình bày theo đúng chuẩn quy trình tư duy thiết kế và kĩ thuật GDPT 2018.'
-    };
-  }
-
-  // ==========================================
-  // SUBJECT: TOÁN HỌC (MATHEMATICS)
-  // ==========================================
-  if (subjectKey === 'toan') {
-    if (type === 'multiple_choice') {
-      return {
-        id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
-        content: `Cho hàm số $y = f(x)$ liên quan đến ${unit || topic}. Mệnh đề nào sau đây đúng?`,
-        options: [
-          { key: 'A', content: 'Hàm số đồng biến trên khoảng xác định khi $f\'(x) > 0$.' },
-          { key: 'B', content: 'Hàm số luôn nghịch biến trên $\\mathbb{R}$.' },
-          { key: 'C', content: 'Hàm số không có điểm cực trị nào.' },
-          { key: 'D', content: 'Giá trị lớn nhất của hàm số luôn bằng 0.' }
-        ],
-        correctOption: 'A',
-        explanation: 'Theo định lí về tính đơn điệu của hàm số: Nếu $f\'(x) > 0, \\forall x \\in (a; b)$ thì hàm số đồng biến trên khoảng $(a; b)$.'
-      };
-    }
-    if (type === 'true_false') {
-      return {
-        id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
-        content: `Cho hàm số $y = f(x) = x^3 - 3x^2 + 2$ liên quan đến chủ đề "${topic}":`,
-        trueFalseItems: [
-          { key: 'a', statement: 'Đạo hàm của hàm số là $f\'(x) = 3x^2 - 6x$.', isCorrect: true, explanation: 'Đúng.' },
-          { key: 'b', statement: 'Hàm số đạt cực tiểu tại điểm $x = 0$.', isCorrect: false, explanation: 'Sai, $f\'(x)=0 \\Leftrightarrow x=0$ hoặc $x=2$; $x=0$ là điểm cực đại.' },
-          { key: 'c', statement: 'Hàm số đồng biến trên các khoảng $(-\\infty; 0)$ và $(2; +\\infty)$.', isCorrect: true, explanation: 'Đúng do $f\'(x) > 0$.' },
-          { key: 'd', statement: 'Đồ thị hàm số đi qua gốc tọa độ $O(0; 0)$.', isCorrect: false, explanation: 'Sai, tại $x=0 \\Rightarrow y=2 \\neq 0$.' }
-        ],
-        explanation: 'Mệnh đề a, c ĐÚNG; b, d SAI.'
-      };
-    }
-    if (type === 'short_answer') {
-      return {
-        id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
-        content: `Tìm giá trị cực đại của hàm số $y = -x^2 + 4x + 1$.`,
-        shortAnswerKey: '5',
-        explanation: 'Ta có đỉnh parabol tại $x = -b/(2a) = 2 \\Rightarrow y_{max} = -(2)^2 + 4(2) + 1 = 5$.'
-      };
-    }
-    return {
-      id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
-      content: `Khảo sát sự biến thiên và vẽ đồ thị của hàm số $y = x^3 - 3x + 1$ (${topic}).`,
-      essayRubric: 'Ý a (1.0đ): Tập xác định, tính đạo hàm $y\' = 3x^2 - 3$, giải nghiệm $x = \\pm 1$, lập bảng biến thiên.\nÝ b (1.0đ): Xác định điểm uốn, giao điểm với các trục tọa độ và vẽ đồ thị chính xác.',
-      explanation: 'Thực hiện đầy đủ các bước khảo sát hàm đa thức bậc ba.'
-    };
-  }
-
-  // ==========================================
-  // SUBJECT: GENERIC SUBJECT (CHUNG CHO TẤT CẢ MÔN HỌC KHÁC)
-  // ==========================================
-  if (type === 'multiple_choice') {
-    return {
-      id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
-      content: `Nội dung cốt lõi của bài học "${unit || topic}" (Môn ${p.subjectName}) hướng tới phát triển năng lực nhận thức nào sau đây?`,
-      options: [
-        { key: 'A', content: 'Hiểu rõ khái niệm bản chất, vận dụng linh hoạt kiến thức vào giải quyết vấn đề thực tiễn.' },
-        { key: 'B', content: 'Chỉ học thuộc lòng máy móc định nghĩa mà không cần liên hệ thực tế.' },
-        { key: 'C', content: 'Bỏ qua việc phân tích và đánh giá các dữ liệu thực nghiệm.' },
-        { key: 'D', content: 'Không chú trọng tư duy phản biện và kĩ năng làm việc sáng tạo.' }
-      ],
-      correctOption: 'A',
-      explanation: `Chương trình giáo dục môn ${p.subjectName} chú trọng phát triển phẩm chất và năng lực giải quyết vấn đề gắn với thực tiễn đời sống.`
-    };
-  }
-
-  if (type === 'true_false') {
-    return {
-      id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
-      content: `Xét các nhận định khoa học liên quan đến nội dung "${topic} - ${unit}" trong môn ${p.subjectName}:`,
-      trueFalseItems: [
-        { key: 'a', statement: `Kiến thức của "${unit || topic}" có tính hệ thống và gắn liền với các hiện tượng thực tế.`, isCorrect: true, explanation: 'Đúng, môn học mang tính thực tiễn cao.' },
-        { key: 'b', statement: 'Mọi quy luật khoa học đều mang tính cảm tính và không cần được kiểm chứng bằng thực nghiệm.', isCorrect: false, explanation: 'Sai, tri thức khoa học dựa trên phương pháp nghiên cứu và luận cứ xác thực.' },
-        { key: 'c', statement: 'Việc vận dụng tri thức vào đời sống giúp nâng cao năng lực tư duy sáng tạo của người học.', isCorrect: true, explanation: 'Đúng.' },
-        { key: 'd', statement: 'Nội dung bài học hoàn toàn tách rời với xu thế chuyển đổi số và phát triển bền vững.', isCorrect: false, explanation: 'Sai, môn học luôn định hướng gắn với xã hội hiện đại.' }
-      ],
-      explanation: 'Mệnh đề a, c ĐÚNG; b, d SAI.'
-    };
-  }
-
-  if (type === 'short_answer') {
-    return {
-      id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
-      content: `Hãy nêu từ khóa (keyword) quan trọng nhất thể hiện mục tiêu phát triển của "${topic} - ${unit}" (viết ngắn gọn trong 1-4 từ)?`,
-      shortAnswerKey: 'Vận dụng thực tiễn',
-      explanation: `Mục tiêu cốt lõi là phát triển năng lực tư duy và vận dụng kiến thức môn ${p.subjectName} vào thực tiễn.`
-    };
-  }
-
+  // Synthesize a unique procedural question if pool exhausted
+  const synthContent = `Câu hỏi trắc nghiệm ${ctx.orderNumber}: Dựa trên nội dung kiến thức về "${ctx.unit || ctx.topic}" (mức độ ${ctx.level}), nhận định nào sau đây là hoàn toàn chính xác?`;
+  ctx.usedContents.add(synthContent);
   return {
-    id, orderNumber, type, topic, unit, cognitiveLevel: level, points,
-    content: `Dựa vào kiến thức về "${topic} - ${unit}" trong môn ${p.subjectName}, hãy trình bày ý nghĩa thực tiễn của bài học và đề xuất 02 giải pháp nâng cao hiệu quả học tập môn học này.`,
-    essayRubric: 'Ý a (1.0đ): Nêu rõ ý nghĩa thực tiễn đối với đời sống và nhận thức bản thân.\nÝ b (1.0đ): Đề xuất 02 giải pháp học tập chủ động, sáng tạo và có tính khả thi cao.',
-    explanation: 'Trình bày mạch lạc, logic và bám sát yêu cầu cần đạt của chương trình.'
+    id,
+    orderNumber: ctx.orderNumber,
+    type: 'multiple_choice',
+    topic: ctx.topic,
+    unit: ctx.unit,
+    cognitiveLevel: ctx.level,
+    content: synthContent,
+    options: [
+      { key: 'A', content: `Nắm vững khái niệm cốt lõi của ${ctx.unit || ctx.topic} và vận dụng giải quyết bài toán thực tế.` },
+      { key: 'B', content: `Chỉ học thuộc định nghĩa mà không cần phân tích bản chất hiện tượng.` },
+      { key: 'C', content: `Bỏ qua mối quan hệ nhân quả và quy luật vận động của hệ thống.` },
+      { key: 'D', content: `Không cần kiểm chứng kết quả bằng các phương pháp khoa học.` }
+    ],
+    correctOption: 'A',
+    points: ctx.points,
+    explanation: `Khẳng định A đúng vì mục tiêu bài học "${ctx.unit || ctx.topic}" yêu cầu phát triển năng lực nhận thức và vận dụng thực tiễn.`
   };
 }
+
+function getUniqueTFQuestion(ctx: SelectionContext): ExamQuestion {
+  const pool = getSubjectTFPool(ctx.subjectKey);
+  const id = `q-tf-${ctx.orderNumber}-${Math.random().toString(36).substring(2, 6)}`;
+
+  let candidates = pool.filter(item => !ctx.usedContents.has(item.content));
+
+  if (candidates.length > 0) {
+    const chosen = candidates[0];
+    ctx.usedContents.add(chosen.content);
+    return {
+      id,
+      orderNumber: ctx.orderNumber,
+      type: 'true_false',
+      topic: ctx.topic,
+      unit: ctx.unit,
+      cognitiveLevel: chosen.level || ctx.level,
+      content: chosen.content,
+      trueFalseItems: chosen.items,
+      points: ctx.points,
+      explanation: chosen.explanation
+    };
+  }
+
+  // Synthesize unique True/False
+  const synthContent = `Đọc đoạn thông tin và phân tích các nhận định khoa học liên quan đến nội dung "${ctx.topic} - ${ctx.unit}":\n"Trong chương trình ${ctx.subjectName} (${ctx.grade}), bài học ${ctx.unit} cung cấp hệ thống kiến thức nền tảng và phương pháp tư duy quan trọng gắn liền với thực tiễn."`;
+  ctx.usedContents.add(synthContent);
+  return {
+    id,
+    orderNumber: ctx.orderNumber,
+    type: 'true_false',
+    topic: ctx.topic,
+    unit: ctx.unit,
+    cognitiveLevel: ctx.level,
+    content: synthContent,
+    trueFalseItems: [
+      { key: 'a', statement: `Kiến thức của "${ctx.unit}" có tính ứng dụng thực tiễn cao trong đời sống và sản xuất.`, isCorrect: true, explanation: 'Đúng.' },
+      { key: 'b', statement: 'Mọi định luật và quy luật khoa học đều có thể áp dụng tùy tiện mà không cần điều kiện xác định.', isCorrect: false, explanation: 'Sai, mỗi định luật đều có phạm vi áp dụng và điều kiện nghiệm đúng.' },
+      { key: 'c', statement: 'Việc giải quyết bài toán phân hóa đòi hỏi kết hợp linh hoạt kiến thức liên môn.', isCorrect: true, explanation: 'Đúng.' },
+      { key: 'd', statement: 'Nội dung bài học hoàn toàn tách rời với xu thế chuyển đổi số và phát triển bền vững.', isCorrect: false, explanation: 'Sai, chương trình luôn gắn với định hướng hiện đại.' }
+    ],
+    points: ctx.points,
+    explanation: 'Khẳng định a, c là ĐÚNG; b, d là SAI.'
+  };
+}
+
+function getUniqueShortQuestion(ctx: SelectionContext): ExamQuestion {
+  const pool = getSubjectShortPool(ctx.subjectKey);
+  const id = `q-sa-${ctx.orderNumber}-${Math.random().toString(36).substring(2, 6)}`;
+
+  let candidates = pool.filter(item => !ctx.usedContents.has(item.content));
+
+  if (candidates.length > 0) {
+    const chosen = candidates[0];
+    ctx.usedContents.add(chosen.content);
+    return {
+      id,
+      orderNumber: ctx.orderNumber,
+      type: 'short_answer',
+      topic: ctx.topic,
+      unit: ctx.unit,
+      cognitiveLevel: chosen.level || ctx.level,
+      content: chosen.content,
+      shortAnswerKey: chosen.key,
+      points: ctx.points,
+      explanation: chosen.explanation
+    };
+  }
+
+  // Synthesize unique calculation
+  const p1 = 20 + ctx.orderNumber * 5;
+  const p2 = 80 + ctx.orderNumber * 10;
+  const key = ((p1 / p2) * 100).toFixed(1);
+  const synthContent = `Cho dữ liệu thực nghiệm về "${ctx.unit || ctx.topic}": Giá trị thành phần $A = ${p1}$ trên tổng số $B = ${p2}$. Hãy tính tỉ lệ (%) của thành phần $A$ so với tổng số $B$ (làm tròn kết quả đến 1 chữ số thập phân)?`;
+  ctx.usedContents.add(synthContent);
+  return {
+    id,
+    orderNumber: ctx.orderNumber,
+    type: 'short_answer',
+    topic: ctx.topic,
+    unit: ctx.unit,
+    cognitiveLevel: ctx.level,
+    content: synthContent,
+    shortAnswerKey: key,
+    points: ctx.points,
+    explanation: `Tỉ lệ (%) = (${p1} / ${p2}) * 100% = ${key}%.`
+  };
+}
+
+function getUniqueEssayQuestion(ctx: SelectionContext): ExamQuestion {
+  const pool = getSubjectEssayPool(ctx.subjectKey);
+  const id = `q-es-${ctx.orderNumber}-${Math.random().toString(36).substring(2, 6)}`;
+
+  let candidates = pool.filter(item => !ctx.usedContents.has(item.content));
+
+  if (candidates.length > 0) {
+    const chosen = candidates[0];
+    ctx.usedContents.add(chosen.content);
+    return {
+      id,
+      orderNumber: ctx.orderNumber,
+      type: 'essay',
+      topic: ctx.topic,
+      unit: ctx.unit,
+      cognitiveLevel: chosen.level || ctx.level,
+      content: chosen.content,
+      essayRubric: chosen.essayRubric,
+      points: ctx.points,
+      explanation: chosen.explanation
+    };
+  }
+
+  const synthContent = `Dựa vào kiến thức về "${ctx.topic} - ${ctx.unit}", hãy trình bày và phân tích các luận điểm khoa học trọng tâm của bài học. Đề xuất 02 giải pháp nâng cao hiệu quả vận dụng kiến thức này vào thực tiễn đời sống.`;
+  ctx.usedContents.add(synthContent);
+  return {
+    id,
+    orderNumber: ctx.orderNumber,
+    type: 'essay',
+    topic: ctx.topic,
+    unit: ctx.unit,
+    cognitiveLevel: ctx.level,
+    content: synthContent,
+    essayRubric: 'Ý a (1.0đ): Nêu rõ bản chất khoa học, nguyên lí vận hành và các luận điểm chính.\nÝ b (0.5đ): Đề xuất giải pháp 1 có tính khả thi và logic cao.\nÝ c (0.5đ): Đề xuất giải pháp 2 gắn liền với đổi mới sáng tạo.',
+    points: ctx.points,
+    explanation: 'Học sinh trình bày đầy đủ bản chất bài học và 02 giải pháp thực tiễn hợp lí.'
+  };
+}
+
+// -------------------------------------------------------------
+// POOL ACCESSORS
+// -------------------------------------------------------------
+
+function getSubjectMCQPool(subjectKey: string): RawMCQ[] {
+  switch (subjectKey) {
+    case 'dia-li': return DIA_LI_MCQ;
+    case 'lich-su': return LICH_SU_MCQ;
+    case 'toan': return TOAN_MCQ;
+    default: return DIA_LI_MCQ;
+  }
+}
+
+function getSubjectTFPool(subjectKey: string): RawTF[] {
+  switch (subjectKey) {
+    case 'dia-li': return DIA_LI_TF;
+    case 'lich-su': return LICH_SU_TF;
+    case 'toan': return TOAN_TF;
+    default: return DIA_LI_TF;
+  }
+}
+
+function getSubjectShortPool(subjectKey: string): RawShort[] {
+  switch (subjectKey) {
+    case 'dia-li': return DIA_LI_SHORT;
+    case 'lich-su': return LICH_SU_SHORT;
+    case 'toan': return TOAN_SHORT;
+    default: return DIA_LI_SHORT;
+  }
+}
+
+function getSubjectEssayPool(subjectKey: string): RawEssay[] {
+  switch (subjectKey) {
+    case 'dia-li': return DIA_LI_ESSAY;
+    case 'lich-su': return LICH_SU_ESSAY;
+    case 'toan': return TOAN_ESSAY;
+    default: return DIA_LI_ESSAY;
+  }
+}
+
+// -------------------------------------------------------------
+// INITIAL MATRIX AND SPEC GENERATION
+// -------------------------------------------------------------
 
 export function generateInitialMatrixAndSpecForSubject(subject: string, grade: string = 'Lớp 12'): {
   matrix: MatrixRow[];

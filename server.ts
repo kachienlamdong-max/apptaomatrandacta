@@ -121,13 +121,30 @@ async function startServer() {
       const ai = getGeminiClient();
 
       const prompt = `Bạn là chuyên gia thẩm định chương trình giáo dục phổ thông GDPT 2018 của Bộ Giáo dục và Đào tạo Việt Nam.
-Hãy xây dựng Ma trận đề kiểm tra định kỳ chuẩn Bộ GD&ĐT cho:
+Hãy xây dựng Ma trận đề kiểm tra định kỳ cấp THPT/THCS chuẩn Bộ GD&ĐT cho:
 - Môn học: ${subject}
 - Khối lớp: ${grade}
 - Bộ sách giáo khoa: ${curriculum}
 - Kỳ thi / Kiểm tra: ${examTitle}
 - Thời gian làm bài: ${timeDuration} phút
-- Định dạng cấu trúc: ${structureOption} (Option 1: Phần I TN 4 lựa chọn, Phần II Đúng/Sai, Phần III Trả lời ngắn, Phần IV Tự luận).
+- Định dạng cấu trúc: ${structureOption}
+
+QUY TẮC BẮT BUỘC THEO HƯỚNG DẪN KỸ THUẬT MA TRẬN BỘ GD&ĐT:
+1. CẤU TRÚC ĐỀ THEO ĐẶC THÙ TỪNG MÔN:
+   - Môn Toán: Phần I (12 câu MCQ - 3.0đ, 0.25đ/câu), Phần II (4 câu Đúng/Sai - 4.0đ, 1.0đ/câu với 4 ý), Phần III (6 câu Trả lời ngắn - 3.0đ, 0.5đ/câu).
+   - Môn Vật lí, Hóa học, Sinh học, Địa lí: Phần I (18 câu MCQ - 4.5đ, 0.25đ/câu), Phần II (4 câu Đúng/Sai - 4.0đ, 1.0đ/câu với 4 ý), Phần III (6 câu Trả lời ngắn - 1.5đ, 0.25đ/câu).
+   - Môn Lịch sử, GDKT&PL, Công nghệ: Phần I (24 câu MCQ - 6.0đ) + Phần II (4 câu Đúng/Sai - 4.0đ) hoặc cấu trúc kết hợp Tự luận định kỳ theo quy định.
+   - Môn Ngữ văn: Tự luận gồm 2 phần (Đọc hiểu 4.0đ + Viết 6.0đ).
+   - Môn Ngoại ngữ: Trắc nghiệm nhiều lựa chọn toàn bộ bài thi.
+2. TỈ LỆ MỨC ĐỘ NHẬN THỨC TOÀN BÀI:
+   - Mức Biết: khoảng 40% (4.0 điểm).
+   - Mức Hiểu: khoảng 30% (3.0 điểm).
+   - Mức Vận dụng (gồm Vận dụng và Vận dụng cao): khoảng 30% (3.0 điểm).
+   - Lưu ý: Tỉ lệ tính theo ĐIỂM SỐ THỰC TẾ toàn bài, không chỉ tính theo số lượng câu hỏi.
+3. PHÂN BỔ ĐIỂM SỐ CHÍNH XÁC:
+   - Tổng điểm toàn bài phải đúng 10.0 điểm.
+   - Các nội dung trọng tâm có thời lượng dạy học lớn hơn cần được phân bổ số câu, số lệnh hỏi và điểm số tương xứng.
+
 ${customNotes ? `- Yêu cầu bổ sung của giáo viên: ${customNotes}` : ''}
 
 Hãy trả về định dạng JSON với mảng danh sách các dòng ma trận (MatrixRow). Mỗi dòng gồm:
@@ -138,8 +155,7 @@ Hãy trả về định dạng JSON với mảng danh sách các dòng ma trận
 - part2_nb, part2_th, part2_vd, part2_vdc (số lượng câu Đúng/Sai ở 4 mức độ)
 - part3_nb, part3_th, part3_vd, part3_vdc (số lượng câu Trả lời ngắn ở 4 mức độ)
 - part4_nb, part4_th, part4_vd, part4_vdc (số lượng câu Tự luận ở 4 mức độ)
-- totalPoints: tổng điểm tương ứng ước tính cho dòng đó (thang 10 điểm toàn đề).
-Lưu ý: Tỷ lệ phân bổ điểm chuẩn Bộ thường là: 40% Nhận biết, 30% Thông hiểu, 20% Vận dụng, 10% Vận dụng cao. Tổng điểm toàn bộ ma trận phải đúng 10.0 điểm.`;
+- totalPoints: tổng điểm tương ứng cho dòng đó (tổng toàn bộ ma trận phải đạt đúng 10.0 điểm).`;
 
       const response = await ai.models.generateContent({
         model: 'gemini-3.7-flash',
@@ -273,25 +289,47 @@ Và số câu hỏi tương ứng theo ma trận.`;
       const { header, matrix, specification, customInstructions } = req.body;
       const ai = getGeminiClient();
 
-      const prompt = `Bạn là giáo viên chuyên gia ra đề thi chuẩn Bộ GD&ĐT Việt Nam.
-Hãy tạo 01 ĐỀ THI MẪU HOÀN CHỈNH MINH HỌA bám sát 100% Ma trận và Bản đặc tả sau:
+      const prompt = `Bạn là giáo viên chuyên gia ra đề thi chuẩn Bộ GD&ĐT Việt Nam theo chương trình GDPT 2018.
+Hãy tạo 01 ĐỀ THI MẪU HOÀN CHỈNH MINH HỌA bám sát 100% Ma trận, Bản đặc tả và BẢNG KIỂM TIÊU CHÍ KỸ THUẬT CỦA BỘ GD&ĐT sau:
 - Môn: ${header.subject} (${header.grade})
 - Kỳ thi: ${header.examTitle} - Thời gian: ${header.timeDuration} phút
 - Bộ sách: ${header.curriculum}
 
-QUY TẮC CÔNG THỨC TOÁN / LÝ / HÓA (BẮT BUỘC):
-- Tất cả công thức Toán, Lý, Hóa BẮT BUỘC đặt trong cặp dấu $...$ (ví dụ: $f(x) = x^3 - 3x + 1$, $\\int_0^1 x e^x dx$, $\\vec{u} = (1; 2; -3)$, $\\Delta = b^2 - 4ac$, $Fe + 2HCl \\rightarrow FeCl_2 + H_2\\uparrow$).
+QUY TẮC KỸ THUẬT VÀ TIÊU CHÍ BẢNG KIỂM BẮT BUỘC CỦA BỘ GD&ĐT:
 
-CẤU TRÚC 4 PHẦN CHUẨN BỘ GD&ĐT:
-1. PHẦN I: Trắc nghiệm 4 lựa chọn (type: 'multiple_choice'). Mỗi câu có options: [{key: 'A', content: '...'}, {key: 'B', content: '...'}, {key: 'C', content: '...'}, {key: 'D', content: '...'}], correctOption: 'A'|'B'|'C'|'D'.
-2. PHẦN II: Trắc nghiệm Đúng/Sai (type: 'true_false'). Mỗi câu có ngữ cảnh và 4 mệnh đề con a, b, c, d (trueFalseItems: [{key: 'a', statement: '...', isCorrect: true/false, explanation: '...'}, ...]).
-3. PHẦN III: Trắc nghiệm trả lời ngắn (type: 'short_answer'). Điền số hoặc kết quả ngắn gọn (shortAnswerKey).
-4. PHẦN IV: Tự luận (type: 'essay'). Có hướng dẫn chấm, biểu điểm và thang điểm chi tiết (essayRubric).
+1. QUY TẮC CHUNG VÀ TÍNH ĐỘC LẬP (KHÔNG TRÙNG LẶP):
+- TẤT CẢ CÁC CÂU HỎI TRONG TOÀN BỘ ĐỀ THI BẮT BUỘC PHẢI HOÀN TOÀN KHÁC NHAU VỀ NỘI DUNG, DỮ LIỆU, NGỮ CẢNH VÀ LỆNH HỎI.
+- Tất cả công thức Toán, Lý, Hóa BẮT BUỘC đặt trong cặp dấu $...$ (ví dụ: $f(x) = x^3 - 3x + 1$, $\\int_0^1 x e^x dx$, $\\vec{u} = (1; 2; -3)$, $Fe + 2HCl \\rightarrow FeCl_2 + H_2\\uparrow$).
 
-Mỗi câu hỏi BẮT BUỘC có:
-- cognitiveLevel: 'Nhận biết' | 'Thông hiểu' | 'Vận dụng' | 'Vận dụng cao'
-- points: điểm số
-- explanation: Lời giải chi tiết, rõ ràng, sư phạm, bước giải cụ thể để giáo viên làm hướng dẫn chấm.
+2. PHẦN I - CÂU TRẮC NGHIỆM NHIỀU PHƯƠNG ÁN LỰA CHỌN (type: 'multiple_choice'):
+- Mỗi câu hỏi đo lường một kết quả học tập/mục tiêu xác định; tập trung vào MỘT vấn đề duy nhất.
+- Câu dẫn ngắn gọn, rõ ý, ở thể khẳng định. Tránh các từ ngữ mơ hồ, chủ quan như "Theo em...", "hầu hết", "phần lớn".
+- Bốn phương án lựa chọn A, B, C, D độc lập, đồng nhất về nội dung và độ dài tương đương nhau.
+- TUYỆT ĐỐI KHÔNG dùng các phương án: "Tất cả các phương án trên đều đúng", "Không có phương án nào đúng", "Cả A và B đều đúng/sai".
+- Phương án nhiễu phải có tính hợp lí, không "sai" một cách quá lộ liễu. Vị trí phương án đúng A, B, C, D phân bố đều.
+
+3. PHẦN II - CÂU TRẮC NGHIỆM ĐÚNG/SAI (type: 'true_false'):
+- Mỗi câu gồm 1 đoạn thông tin/ngữ liệu, PHẦN NGUỒN NGỮ LIỆU đặt ngay dưới đoạn thông tin (ví dụ: Nguồn: Tổng hợp từ Tổng cục Thống kê / Nguồn: Xử lí từ SGK Địa lí 12 / Nguồn: Biên tập từ Bộ TN&MT...).
+- Đoạn thông tin cung cấp đủ dữ kiện để đánh giá, không sao chép nguyên văn dài từ SGK mà được tổng hợp/xử lí.
+- BỐN NHẬN ĐỊNH a, b, c, d PHÂN BỐ CHUẨN CẤP ĐỘ NHẬN THỨC:
+  + Nhận định a): Mức NHẬN BIẾT (tái hiện kiến thức cơ bản, sự kiện, định nghĩa, thông tin trực tiếp).
+  + Nhận định b): Mức THÔNG HIỂU (xử lí thông tin, giải thích, so sánh, phân tích mối quan hệ, xác định nguyên nhân).
+  + Nhận định c) & d): Mức VẬN DỤNG (kết nối thông tin phức hợp, suy luận, đánh giá, xử lí dữ liệu thực tế, giải quyết tình huống).
+- Mỗi nhận định là một mệnh đề hoàn chỉnh, chỉ chứa MỘT ý chính trọn vẹn, không mơ hồ, không dùng phủ định kép/phức tạp, hạn chế từ cảm tính ước lệ ("hầu hết", "nhiều", "ít", "cao", "thấp"... trừ khi có số liệu rõ ràng).
+- Tỉ lệ số nhận định Đúng và Sai trong đề phải cân đối tương đối, các nhận định độc lập, không gợi đáp án cho nhau.
+
+4. PHẦN III - CÂU TRẮC NGHIỆM TRẢ LỜI NGẮN (type: 'short_answer'):
+- CHỈ DÙNG CHO CÁC CÂU HỎI TÍNH TOÁN HOẶC XỬ LÍ SỐ LIỆU ĐỊNH LƯỢNG (Toán, Vật lí, Hóa học, Sinh học, Địa lí có xử lí số liệu). Không dùng câu hỏi lí thuyết, thuật ngữ, tên địa danh.
+- ĐÁP ÁN LÀ MỘT SỐ HOẶC GIÁ TRỊ ĐỊNH LƯỢNG XÁC ĐỊNH, TỐI ĐA 4 KÝ TỰ (bao gồm cả dấu trừ '-' và dấu phẩy thập phân ',').
+  (Ví dụ hợp lệ: 12, 3,5, 0,75, -2,1, 1089, 290, 75).
+- KHÔNG ghi đơn vị đo, KHÔNG ghi kí hiệu %, phân số hay lời giải trong đáp án (shortAnswerKey).
+- Trong đề bài BẮT BUỘC nêu rõ đơn vị, quy ước làm tròn và câu dẫn: "Khi trả lời, chỉ ghi số." (Ví dụ: "...Tính mật độ dân số của tỉnh X (đơn vị: người/km²), làm tròn đến hàng đơn vị. Khi trả lời, chỉ ghi số.").
+
+5. PHẦN IV - CÂU TỰ LUẬN (type: 'essay'):
+- Phân loại theo 3 mức: Biết, Hiểu, Vận dụng.
+- Cấu trúc đầy đủ 4 thành phần: Ngữ liệu/bối cảnh, Lệnh hỏi rõ ràng, Phạm vi trả lời cụ thể (giới hạn rõ số lượng ý: ví dụ "nêu 2 biểu hiện", "đề xuất 2 giải pháp", thời gian, đối tượng), Sản phẩm trả lời.
+- essayRubric (Hướng dẫn chấm): BẮT BUỘC chia điểm chi tiết theo từng ý (ví dụ: Ý 1 (0.5đ): ..., Ý 2 (0.5đ): ..., Lưu ý chấm: ...).
+
 ${customInstructions ? `Lưu ý thêm từ giáo viên: ${customInstructions}` : ''}
 `;
 

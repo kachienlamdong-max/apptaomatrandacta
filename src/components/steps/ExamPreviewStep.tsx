@@ -17,12 +17,16 @@ import {
   XCircle,
   Copy,
   Sliders,
-  Download
+  Download,
+  ShieldCheck,
+  AlertTriangle,
+  FileCheck
 } from 'lucide-react';
-import { ExamQuestion, ExamHeaderConfig, ShuffledExamVariant } from '../../types';
+import { ExamQuestion, ExamHeaderConfig, ShuffledExamVariant, MatrixRow, SpecificationItem } from '../../types';
 import { MathRenderer } from '../../utils/mathRenderer';
 import { generateShuffledExamVariants } from '../../utils/shuffler';
-import { exportSingleVariantToDocx } from '../../utils/docxExport';
+import { exportSingleVariantToDocx, exportComplianceReportToDocx } from '../../utils/docxExport';
+import { performMoetComplianceAudit } from '../../utils/complianceAudit';
 
 interface ExamPreviewStepProps {
   header: ExamHeaderConfig;
@@ -35,6 +39,8 @@ interface ExamPreviewStepProps {
   isAiGeneratingExam: boolean;
   onSyncQuestionsFromMatrix?: () => void;
   onGenerateAiExam?: () => void;
+  matrix?: MatrixRow[];
+  specification?: SpecificationItem[];
 }
 
 export const ExamPreviewStep: React.FC<ExamPreviewStepProps> = ({
@@ -47,9 +53,11 @@ export const ExamPreviewStep: React.FC<ExamPreviewStepProps> = ({
   onNextStep,
   isAiGeneratingExam,
   onSyncQuestionsFromMatrix,
-  onGenerateAiExam
+  onGenerateAiExam,
+  matrix = [],
+  specification = []
 }) => {
-  const [viewMode, setViewMode] = useState<'master' | 'variants' | 'matrix_key'>('master');
+  const [viewMode, setViewMode] = useState<'master' | 'variants' | 'matrix_key' | 'checklist'>('master');
   const [variantCount, setVariantCount] = useState<number>(variants.length > 0 ? variants.length : 4);
   const [startCode, setStartCode] = useState<number>(101);
   const [selectedVariantCode, setSelectedVariantCode] = useState<string>(variants[0]?.examCode || (variants[0] as any)?.code || '101');
@@ -59,6 +67,9 @@ export const ExamPreviewStep: React.FC<ExamPreviewStepProps> = ({
   const [isAssisting, setIsAssisting] = useState(false);
   const [isCustomShuffleModalOpen, setIsCustomShuffleModalOpen] = useState(false);
   const [customCodesInput, setCustomCodesInput] = useState<string>('101, 102, 103, 104');
+  const [isExportingReport, setIsExportingReport] = useState(false);
+
+  const auditReport = performMoetComplianceAudit(header, questions, matrix, specification);
 
   // Re-shuffle variants on demand with specified count or startCode
   const handleReshuffleWithCount = (count: number, customStart: number = startCode) => {
@@ -173,6 +184,18 @@ export const ExamPreviewStep: React.FC<ExamPreviewStepProps> = ({
             }`}
           >
             📊 Bảng Soi Đáp Án ({activeVariants.length} Mã Đề)
+          </button>
+          <button
+            id="view-btn-checklist"
+            onClick={() => setViewMode('checklist')}
+            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+              viewMode === 'checklist'
+                ? 'bg-white text-emerald-700 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Bảng Kiểm Chuẩn Bộ GD&ĐT ({auditReport.scorePercentage}%)</span>
           </button>
         </div>
 
@@ -1011,6 +1034,141 @@ export const ExamPreviewStep: React.FC<ExamPreviewStepProps> = ({
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 4. VIEW: BẢNG KIỂM TRA ĐÁNH GIÁ CHUẨN KỸ THUẬT BỘ GD&ĐT (CHECKLIST)        */}
+      {/* ========================================================================= */}
+      {viewMode === 'checklist' && (
+        <div className="space-y-6 animate-in fade-in duration-150">
+          
+          {/* Header Summary Banner */}
+          <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 rounded-2xl shadow-md border border-slate-800 flex flex-wrap items-center justify-between gap-6">
+            <div className="space-y-2 max-w-2xl">
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-500/20 border border-emerald-500/30 rounded-full text-emerald-300 text-xs font-semibold">
+                <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                <span>Thẩm Định Kỹ Thuật Chương Trình GDPT 2018</span>
+              </div>
+              <h2 className="text-xl font-black text-white tracking-tight">
+                Bảng Kiểm Tra & Đánh Giá Chất Lượng Đề Thi
+              </h2>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Hệ thống tự động đối soát toàn bộ ma trận, bản đặc tả và {questions.length} câu hỏi theo 4 bảng kiểm kỹ thuật của Bộ GD&ĐT (Trắc nghiệm 4 lựa chọn, Đúng/Sai, Trả lời ngắn, Tự luận và tính độc lập toàn đề).
+              </p>
+            </div>
+
+            <div className="flex flex-col items-center justify-center p-4 bg-white/10 backdrop-blur-xs rounded-xl border border-white/15 min-w-[160px] text-center">
+              <span className="text-3xl font-black text-emerald-400">{auditReport.scorePercentage}%</span>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-200 mt-1">
+                {auditReport.overallStatus === 'excellent' ? 'ĐẠT CHUẨN XUẤT SẮC' : 'ĐẠT YÊU CẦU'}
+              </span>
+              <span className="text-[10px] text-slate-400 mt-0.5">
+                {auditReport.passedChecks}/{auditReport.totalChecks} tiêu chí hoàn hảo
+              </span>
+            </div>
+          </div>
+
+          {/* Action Row */}
+          <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-xl border border-slate-200">
+            <div className="flex items-center gap-3 text-xs">
+              <span className="inline-flex items-center gap-1 font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200">
+                <CheckCircle2 className="w-3.5 h-3.5" /> {auditReport.passedChecks} Đạt chuẩn
+              </span>
+              {auditReport.warningChecks > 0 && (
+                <span className="inline-flex items-center gap-1 font-bold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-md border border-amber-200">
+                  <AlertTriangle className="w-3.5 h-3.5" /> {auditReport.warningChecks} Lưu ý khuyến nghị
+                </span>
+              )}
+              {auditReport.failedChecks > 0 && (
+                <span className="inline-flex items-center gap-1 font-bold text-rose-700 bg-rose-50 px-2.5 py-1 rounded-md border border-rose-200">
+                  <XCircle className="w-3.5 h-3.5" /> {auditReport.failedChecks} Cần sửa
+                </span>
+              )}
+            </div>
+
+            <button
+              onClick={async () => {
+                setIsExportingReport(true);
+                try {
+                  await exportComplianceReportToDocx({
+                    header,
+                    sampleExamQuestions: questions,
+                    matrix,
+                    specification,
+                    shuffledVariants: activeVariants
+                  });
+                } finally {
+                  setIsExportingReport(false);
+                }
+              }}
+              disabled={isExportingReport}
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-lg border border-slate-300 transition-colors"
+            >
+              <FileCheck className="w-4 h-4 text-indigo-600" />
+              <span>{isExportingReport ? 'Đang xuất file...' : 'Tải Bảng Kiểm (DOCX)'}</span>
+            </button>
+          </div>
+
+          {/* Checklist Items Table */}
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+            <div className="divide-y divide-slate-100">
+              {auditReport.items.map((item, idx) => {
+                const isPass = item.status === 'pass';
+                const isWarn = item.status === 'warning';
+                return (
+                  <div key={item.id} className="p-4 sm:p-5 hover:bg-slate-50/60 transition-colors flex items-start gap-4">
+                    <div className="shrink-0 mt-0.5">
+                      {isPass && (
+                        <div className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold text-xs">
+                          <Check className="w-4 h-4" />
+                        </div>
+                      )}
+                      {isWarn && (
+                        <div className="w-7 h-7 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center font-bold text-xs">
+                          <AlertTriangle className="w-4 h-4" />
+                        </div>
+                      )}
+                      {!isPass && !isWarn && (
+                        <div className="w-7 h-7 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center font-bold text-xs">
+                          <XCircle className="w-4 h-4" />
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex-1 space-y-1">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <h4 className="text-xs sm:text-sm font-bold text-slate-900">
+                          {idx + 1}. {item.title}
+                        </h4>
+                        <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider ${
+                          isPass 
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                            : isWarn 
+                            ? 'bg-amber-50 text-amber-700 border border-amber-200' 
+                            : 'bg-rose-50 text-rose-700 border border-rose-200'
+                        }`}>
+                          {isPass ? 'Đạt Chuẩn' : isWarn ? 'Khuyến nghị' : 'Chưa Đạt'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500">{item.description}</p>
+                      <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200/80 text-xs text-slate-700 font-sans">
+                        <span className="font-semibold text-slate-900">Chi tiết kiểm tra: </span>
+                        {item.details}
+                      </div>
+                      {item.suggestion && (
+                        <div className="p-2 bg-indigo-50/60 rounded-lg border border-indigo-100 text-xs text-indigo-900">
+                          <span className="font-semibold">💡 Giải pháp khắc phục: </span>
+                          {item.suggestion}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
         </div>
       )}
 
