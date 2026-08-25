@@ -1,19 +1,10 @@
 import { ExamQuestion, ShuffledExamVariant, QuestionType } from '../types';
-
-// Pseudo-random seeded shuffle to ensure repeatable variations per exam code
-function seededRandom(seed: number) {
-  const x = Math.sin(seed++) * 10000;
-  return x - Math.floor(x);
-}
-
-function shuffleArray<T>(array: T[], seed: number): T[] {
-  const arr = [...array];
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(seededRandom(seed + i * 37) * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
-}
+import {
+  seededRandom,
+  shuffleArrayWithSeed,
+  generateBalancedAnswerPattern,
+  rotateQuestionOptions,
+} from './answerBalancer';
 
 export interface ShuffledExamVariantResult {
   examCode: string;
@@ -48,8 +39,9 @@ export function generateShuffledExamVariants(
   const variants: ShuffledExamVariantResult[] = [];
 
   codes.forEach((code, codeIdx) => {
-    // If codeIdx === 0 (e.g. 101), keep base order; subsequent codes get systematic permutation
-    const seed = (parseInt(code.replace(/\D/g, ''), 10) || (codeIdx + 1) * 101) * 17 + codeIdx * 31;
+    // Generate deterministic seed based on exam code
+    const rawNum = parseInt(code.replace(/\D/g, ''), 10);
+    const seed = (isNaN(rawNum) ? (codeIdx + 1) * 101 : rawNum) * 19 + codeIdx * 37 + 107;
 
     // Group by section so questions don't jump across sections
     const part1Questions = baseQuestions.filter(q => q.type === 'multiple_choice');
@@ -57,49 +49,43 @@ export function generateShuffledExamVariants(
     const part3Questions = baseQuestions.filter(q => q.type === 'short_answer');
     const part4Questions = baseQuestions.filter(q => q.type === 'essay');
 
-    // Shuffle questions within each section (for the first code, keep original order)
-    const shuffledPart1 = codeIdx === 0 ? [...part1Questions] : shuffleArray(part1Questions, seed + 1);
-    const shuffledPart2 = codeIdx === 0 ? [...part2Questions] : shuffleArray(part2Questions, seed + 2);
-    const shuffledPart3 = codeIdx === 0 ? [...part3Questions] : shuffleArray(part3Questions, seed + 3);
+    // Shuffle questions within each section:
+    // For codeIdx === 0 (e.g. Mã 101), keep base sequence of questions, but balance answers!
+    // For other codes (102, 103, 104, ...), permute questions deterministically
+    const shuffledPart1 = codeIdx === 0 ? [...part1Questions] : shuffleArrayWithSeed(part1Questions, seed + 1);
+    const shuffledPart2 = codeIdx === 0 ? [...part2Questions] : shuffleArrayWithSeed(part2Questions, seed + 2);
+    const shuffledPart3 = codeIdx === 0 ? [...part3Questions] : shuffleArrayWithSeed(part3Questions, seed + 3);
     const shuffledPart4 = codeIdx === 0 ? [...part4Questions] : [...part4Questions]; // Essay questions keep standard pedagogical flow
 
-    // Process Part 1: Shuffle A, B, C, D choices
+    // Process Part 1: Ensure EVEN and BALANCED A, B, C, D distribution for EVERY variant (including Mã 101)
+    const variantAnswerPattern = generateBalancedAnswerPattern(shuffledPart1.length, seed + 83);
+
     const processedPart1 = shuffledPart1.map((q, idx) => {
-      if (!q.options || q.options.length < 4 || codeIdx === 0) {
+      if (!q.options || q.options.length < 4) {
         return { ...q, orderNumber: idx + 1 };
       }
 
-      // Determine correct option content
-      const originalCorrectOption = q.options.find(o => o.key === q.correctOption);
-      const originalCorrectContent = originalCorrectOption ? originalCorrectOption.content : '';
-
-      // Shuffle options content
-      const shuffledOptionsContent = shuffleArray(q.options.map(o => o.content), seed + idx * 7);
-      
-      const newOptions = shuffledOptionsContent.map((content, optIdx) => ({
-        key: (['A', 'B', 'C', 'D'][optIdx]) as 'A' | 'B' | 'C' | 'D',
-        content,
-      }));
-
-      // Find new key for the correct option
-      const newCorrectOpt = newOptions.find(o => o.content === originalCorrectContent);
-      const newCorrectKey = newCorrectOpt ? newCorrectOpt.key : q.correctOption;
+      const targetLetter = variantAnswerPattern[idx] || (['A', 'B', 'C', 'D'][idx % 4] as 'A' | 'B' | 'C' | 'D');
+      const rotatedQ = rotateQuestionOptions(q, targetLetter, seed + idx * 17);
 
       return {
-        ...q,
+        ...rotatedQ,
         orderNumber: idx + 1,
-        options: newOptions,
-        correctOption: newCorrectKey,
       };
     });
 
     // Process Part 2: True/False statements (orderNumber restarts from 1)
     const processedPart2 = shuffledPart2.map((q, idx) => {
-      if (!q.trueFalseItems || codeIdx === 0) {
+      if (!q.trueFalseItems) {
         return { ...q, orderNumber: idx + 1 };
       }
 
-      const shuffledItems = shuffleArray(q.trueFalseItems, seed + idx * 13).map((item, itemIdx) => ({
+      // If not codeIdx 0, shuffle sub-items a, b, c, d
+      const itemsToProcess = codeIdx === 0 
+        ? q.trueFalseItems 
+        : shuffleArrayWithSeed(q.trueFalseItems, seed + idx * 13);
+
+      const labeledItems = itemsToProcess.map((item, itemIdx) => ({
         ...item,
         key: (['a', 'b', 'c', 'd'][itemIdx]) as 'a' | 'b' | 'c' | 'd',
       }));
@@ -107,7 +93,7 @@ export function generateShuffledExamVariants(
       return {
         ...q,
         orderNumber: idx + 1,
-        trueFalseItems: shuffledItems,
+        trueFalseItems: labeledItems,
       };
     });
 

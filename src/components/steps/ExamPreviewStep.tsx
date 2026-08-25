@@ -20,13 +20,16 @@ import {
   Download,
   ShieldCheck,
   AlertTriangle,
-  FileCheck
+  FileCheck,
+  GraduationCap
 } from 'lucide-react';
 import { ExamQuestion, ExamHeaderConfig, ShuffledExamVariant, MatrixRow, SpecificationItem } from '../../types';
 import { MathRenderer } from '../../utils/mathRenderer';
 import { generateShuffledExamVariants } from '../../utils/shuffler';
+import { balanceMultipleChoiceQuestions, calculateAnswerDistribution } from '../../utils/answerBalancer';
 import { exportSingleVariantToDocx, exportComplianceReportToDocx } from '../../utils/docxExport';
 import { performMoetComplianceAudit } from '../../utils/complianceAudit';
+import { parseEssayQuestionRubric, formatPoint } from '../../utils/rubricParser';
 
 interface ExamPreviewStepProps {
   header: ExamHeaderConfig;
@@ -104,6 +107,18 @@ export const ExamPreviewStep: React.FC<ExamPreviewStepProps> = ({
     const newVariants = currentCodes.length > 0 
       ? generateShuffledExamVariants(questions, currentCodes)
       : generateShuffledExamVariants(questions, variantCount, startCode);
+    onChangeVariants(newVariants);
+  };
+
+  // Re-balance and equalize A, B, C, D choices across all questions and regenerate variants
+  const handleEqualizeAnswers = () => {
+    const randomSeed = Math.floor(Math.random() * 10000) + 101;
+    const balancedQuestions = balanceMultipleChoiceQuestions(questions, randomSeed);
+    onChangeQuestions(balancedQuestions);
+    const currentCodes = variants.map(v => v.examCode || (v as any).code || '101');
+    const newVariants = currentCodes.length > 0
+      ? generateShuffledExamVariants(balancedQuestions, currentCodes)
+      : generateShuffledExamVariants(balancedQuestions, variantCount, startCode);
     onChangeVariants(newVariants);
   };
 
@@ -617,14 +632,43 @@ export const ExamPreviewStep: React.FC<ExamPreviewStepProps> = ({
                           </button>
                         </div>
 
-                        {q.essayRubric && (
-                          <div className="p-3 bg-white border border-slate-200 rounded-lg text-xs space-y-1">
-                            <span className="text-amber-800 font-bold text-[11px]">Biểu điểm chấm (Rubric):</span>
-                            <p className="text-slate-600 font-serif text-[11px] leading-relaxed whitespace-pre-line">
-                              {q.essayRubric}
-                            </p>
-                          </div>
-                        )}
+                        {(() => {
+                          const structured = parseEssayQuestionRubric(q, idx);
+                          return (
+                            <div className="p-3 bg-white border border-slate-200 rounded-lg text-xs space-y-2">
+                              <div className="flex items-center justify-between">
+                                <span className="text-amber-800 font-bold text-[11px] uppercase flex items-center gap-1.5">
+                                  <GraduationCap className="w-3.5 h-3.5" />
+                                  Biểu điểm chấm chi tiết (Rubric - {structured.totalPointsFormatted} điểm):
+                                </span>
+                                <span className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded font-medium">
+                                  Thang 0.25đ - 0.5đ / ý
+                                </span>
+                              </div>
+                              <div className="space-y-1.5 pt-1">
+                                {structured.items.map((it, itIdx) => (
+                                  <div key={itIdx} className="p-2 bg-slate-50 rounded-lg border border-slate-200 flex items-start justify-between gap-3 text-xs font-serif">
+                                    <div className="flex items-start gap-2 flex-1">
+                                      {it.subLabel && <span className="font-bold text-slate-800 font-sans text-[11px] shrink-0">{it.subLabel}</span>}
+                                      <div className="text-slate-800 leading-relaxed">
+                                        <MathRenderer content={it.content} />
+                                      </div>
+                                    </div>
+                                    <span className="px-2 py-0.5 bg-amber-100/80 text-amber-900 border border-amber-200 font-mono font-bold text-[11px] rounded shrink-0">
+                                      {it.pointsFormatted}đ
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                              {q.explanation && (
+                                <div className="p-2 bg-blue-50/60 border border-blue-100 rounded-lg text-[11px] text-blue-900 font-sans">
+                                  <span className="font-semibold">Lời giải chi tiết: </span>
+                                  <MathRenderer content={q.explanation} />
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
 
                       </div>
                     ))}
@@ -888,6 +932,14 @@ export const ExamPreviewStep: React.FC<ExamPreviewStepProps> = ({
             </div>
             <div className="flex items-center gap-2">
               <button
+                onClick={handleEqualizeAnswers}
+                title="Tự động phân bổ lại đáp án A, B, C, D đều nhau (25% mỗi đáp án)"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Cân bằng đều A, B, C, D (25%)</span>
+              </button>
+              <button
                 onClick={handleReshuffle}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors"
               >
@@ -899,19 +951,25 @@ export const ExamPreviewStep: React.FC<ExamPreviewStepProps> = ({
 
           {/* BẢNG PHẦN I */}
           {questions.filter(q => q.type === 'multiple_choice').length > 0 && (
-            <div className="space-y-2">
-              <div className="font-bold text-xs text-indigo-900 uppercase">
-                1. Đáp án Phần I: Câu trắc nghiệm nhiều phương án lựa chọn
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="font-bold text-xs text-indigo-900 uppercase flex items-center gap-1.5">
+                  <span>1. Đáp án Phần I: Câu trắc nghiệm nhiều phương án lựa chọn</span>
+                  <span className="text-[11px] font-normal text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                    ✓ Đã phân bổ đều A, B, C, D (~25%/đáp án)
+                  </span>
+                </div>
               </div>
-              <div className="overflow-x-auto border border-slate-200 rounded-xl">
+
+              <div className="overflow-x-auto border border-slate-200 rounded-xl shadow-xs">
                 <table className="w-full text-xs text-center border-collapse">
                   <thead>
                     <tr className="bg-slate-100 text-slate-800 font-bold border-b border-slate-200">
-                      <th className="p-2.5 border-r border-slate-200 text-left pl-4 min-w-[90px]">Câu số</th>
+                      <th className="p-2.5 border-r border-slate-200 text-left pl-4 min-w-[100px]">Câu số</th>
                       {activeVariants.map((variant, vIdx) => {
                         const code = variant.examCode || (variant as any).code || `Mã ${vIdx + 1}`;
                         return (
-                          <th key={code} className="p-2.5 border-r border-slate-200 last:border-r-0 bg-indigo-50 text-indigo-900">
+                          <th key={code} className="p-2.5 border-r border-slate-200 last:border-r-0 bg-indigo-50/80 text-indigo-900 min-w-[70px]">
                             Mã {code}
                           </th>
                         );
@@ -927,16 +985,61 @@ export const ExamPreviewStep: React.FC<ExamPreviewStepProps> = ({
                           </td>
                           {activeVariants.map((variant, vIdx) => {
                             const code = variant.examCode || (variant as any).code;
-                            const key = variant.part1AnswerKeys?.[idx + 1] || variant.answerKey?.[idx + 1] || 'A';
+                            const key = (variant.part1AnswerKeys?.[idx + 1] || variant.answerKey?.[idx + 1] || 'A').toUpperCase();
+                            const colorClass = 
+                              key === 'A' ? 'text-blue-700 bg-blue-50/70 border-blue-200' :
+                              key === 'B' ? 'text-emerald-700 bg-emerald-50/70 border-emerald-200' :
+                              key === 'C' ? 'text-amber-700 bg-amber-50/70 border-amber-200' :
+                              'text-purple-700 bg-purple-50/70 border-purple-200';
+
                             return (
-                              <td key={code || vIdx} className="p-2 font-bold border-r border-slate-200 last:border-r-0 text-indigo-700 bg-indigo-50/20">
-                                {key}
+                              <td key={code || vIdx} className="p-2 border-r border-slate-200 last:border-r-0">
+                                <span className={`inline-block w-6 h-6 leading-6 text-center font-bold rounded border ${colorClass}`}>
+                                  {key}
+                                </span>
                               </td>
                             );
                           })}
                         </tr>
                       );
                     })}
+
+                    {/* Thống kê phân bổ đáp án Part 1 cho từng mã đề */}
+                    <tr className="bg-slate-50 font-sans text-xs border-t-2 border-slate-300 font-medium text-slate-700">
+                      <td className="p-3 font-bold text-slate-900 border-r border-slate-200 text-left pl-4">
+                        <div>Thống kê tỉ lệ</div>
+                        <div className="text-[10px] text-slate-400 font-normal">A / B / C / D</div>
+                      </td>
+                      {activeVariants.map((variant, vIdx) => {
+                        const code = variant.examCode || (variant as any).code;
+                        const p1Questions = variant.questions.filter(q => q.type === 'multiple_choice');
+                        const totalMC = p1Questions.length;
+                        const countA = p1Questions.filter(q => (q.correctOption || '').toUpperCase() === 'A').length;
+                        const countB = p1Questions.filter(q => (q.correctOption || '').toUpperCase() === 'B').length;
+                        const countC = p1Questions.filter(q => (q.correctOption || '').toUpperCase() === 'C').length;
+                        const countD = p1Questions.filter(q => (q.correctOption || '').toUpperCase() === 'D').length;
+
+                        return (
+                          <td key={code || vIdx} className="p-2.5 border-r border-slate-200 last:border-r-0 bg-slate-50">
+                            <div className="flex flex-col items-center justify-center gap-1 text-[11px]">
+                              <div className="flex items-center justify-center gap-1 font-semibold">
+                                <span className="text-blue-700">A:{countA}</span>
+                                <span className="text-slate-300">•</span>
+                                <span className="text-emerald-700">B:{countB}</span>
+                              </div>
+                              <div className="flex items-center justify-center gap-1 font-semibold">
+                                <span className="text-amber-700">C:{countC}</span>
+                                <span className="text-slate-300">•</span>
+                                <span className="text-purple-700">D:{countD}</span>
+                              </div>
+                              <div className="text-[10px] text-emerald-700 font-bold bg-emerald-100/80 px-1.5 py-0.5 rounded">
+                                {totalMC > 0 ? `${Math.round((Math.max(countA, countB, countC, countD) / totalMC) * 100)}% max` : 'Đều'}
+                              </div>
+                            </div>
+                          </td>
+                        );
+                      })}
+                    </tr>
                   </tbody>
                 </table>
               </div>
@@ -1027,6 +1130,89 @@ export const ExamPreviewStep: React.FC<ExamPreviewStepProps> = ({
                             );
                           })}
                         </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* BẢNG PHẦN IV: HƯỚNG DẪN CHẤM & BIỂU ĐIỂM TỰ LUẬN */}
+          {questions.filter(q => q.type === 'essay').length > 0 && (
+            <div className="space-y-3 pt-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="font-bold text-xs text-amber-900 uppercase flex items-center gap-2">
+                  <GraduationCap className="w-4 h-4 text-amber-600" />
+                  <span>4. Bảng Hướng dẫn chấm & Biểu điểm Phần IV: Tự luận (Chuẩn 3 cột)</span>
+                </div>
+                <span className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full font-medium">
+                  Biểu điểm chi tiết theo từng ý (0,25đ / 0,5đ)
+                </span>
+              </div>
+
+              <div className="overflow-x-auto border border-slate-200 rounded-xl shadow-xs">
+                <table className="w-full text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-slate-100 text-slate-800 font-bold border-b border-slate-200">
+                      <th className="p-3 border-r border-slate-200 text-center w-28 bg-slate-200/70">Câu</th>
+                      <th className="p-3 border-r border-slate-200 text-left pl-4">Nội dung / Yêu cầu cần đạt (Hướng dẫn chấm chi tiết)</th>
+                      <th className="p-3 text-center w-24 bg-amber-50/80 text-amber-900">Điểm</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {questions.filter(q => q.type === 'essay').map((q, qIdx) => {
+                      const structured = parseEssayQuestionRubric(q, qIdx);
+                      return (
+                        <React.Fragment key={q.id || qIdx}>
+                          {structured.items.map((item, itemIdx) => (
+                            <tr key={itemIdx} className="hover:bg-slate-50/70 transition-colors">
+                              {itemIdx === 0 && (
+                                <td 
+                                  rowSpan={structured.items.length} 
+                                  className="p-3 font-sans text-center border-r border-slate-200 bg-slate-50/60 align-middle"
+                                >
+                                  <div className="font-bold text-slate-900 text-sm">Câu {qIdx + 1}</div>
+                                  <div className="text-[11px] text-amber-800 font-semibold mt-0.5">({structured.totalPointsFormatted} điểm)</div>
+                                  <div className="text-[10px] text-slate-500 bg-white border border-slate-200 px-1.5 py-0.5 rounded-md mt-1 inline-block">
+                                    {q.cognitiveLevel || 'Vận dụng cao'}
+                                  </div>
+                                </td>
+                              )}
+                              <td className="p-3 border-r border-slate-200 text-slate-800 font-serif leading-relaxed">
+                                <div className="flex items-start gap-2">
+                                  {item.subLabel && (
+                                    <span className="font-bold text-slate-900 font-sans shrink-0 text-xs">
+                                      {item.subLabel}
+                                    </span>
+                                  )}
+                                  <div className="flex-1">
+                                    <MathRenderer content={item.content} />
+                                    {itemIdx === structured.items.length - 1 && q.explanation && (
+                                      <div className="mt-2 pt-2 border-t border-dashed border-slate-200 text-[11px] text-blue-800 bg-blue-50/50 p-2 rounded-lg font-sans">
+                                        <span className="font-semibold text-blue-900">Lời giải chi tiết / Ghi chú: </span>
+                                        <MathRenderer content={q.explanation} />
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="p-3 text-center align-middle font-bold text-slate-900 bg-amber-50/30 text-xs font-mono">
+                                <span className="inline-block px-2 py-1 bg-white border border-amber-200 text-amber-900 rounded-md shadow-2xs">
+                                  {item.pointsFormatted}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                          <tr className="bg-slate-50/80 font-sans text-xs border-b-2 border-slate-200 font-medium">
+                            <td colSpan={2} className="p-2.5 text-right font-bold text-slate-700 border-r border-slate-200 pr-4">
+                              Tổng điểm Câu {qIdx + 1}:
+                            </td>
+                            <td className="p-2.5 text-center font-bold text-indigo-900 bg-indigo-50/50">
+                              {structured.totalPointsFormatted}đ
+                            </td>
+                          </tr>
+                        </React.Fragment>
                       );
                     })}
                   </tbody>

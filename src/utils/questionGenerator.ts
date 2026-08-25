@@ -1,5 +1,6 @@
 import { ExamQuestion, ExamHeaderConfig, MatrixRow, SpecificationItem, MultipleChoiceOption, TrueFalseSubItem } from '../types';
 import { getQuestionBankForSubject, RawMCQ, RawTF, RawShort, RawEssay } from './questionBanks';
+import { balanceMultipleChoiceQuestions } from './answerBalancer';
 
 export function normalizeSubjectKey(subjectName: string): string {
   const s = (subjectName || '').toLowerCase().trim();
@@ -213,7 +214,10 @@ export function generateConsistentQuestionsFromMatrixAndSpec(
     return generateFallbackQuestionsForSubject(header);
   }
 
-  return questions;
+  // Ensure Part 1 Multiple Choice questions have balanced A, B, C, D distribution (approx 25% each)
+  const balancedQuestions = balanceMultipleChoiceQuestions(questions, 101);
+
+  return balancedQuestions;
 }
 
 // -------------------------------------------------------------

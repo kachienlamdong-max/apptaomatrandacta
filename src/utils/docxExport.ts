@@ -14,6 +14,7 @@ import {
 } from 'docx';
 import { ExamProject, ExamQuestion, ExamHeaderConfig, ShuffledExamVariant, MatrixRow, SpecificationItem } from '../types';
 import { generateShuffledExamVariants } from './shuffler';
+import { parseEssayQuestionRubric, formatPoint } from './rubricParser';
 
 export type ExportProjectInput = Partial<ExamProject> & {
   header: ExamHeaderConfig;
@@ -476,6 +477,10 @@ export async function exportExamToDocx(project: ExportProjectInput): Promise<Blo
     })
   );
 
+  const cellBorder = { style: BorderStyle.SINGLE, size: 4, color: '000000' };
+  const allBorders = { top: cellBorder, bottom: cellBorder, left: cellBorder, right: cellBorder };
+  const cellMargins = { top: 80, bottom: 80, left: 100, right: 100 };
+
   const renderPartSolutions = (partTitle: string, partList: ExamQuestion[]) => {
     if (partList.length === 0) return;
     docParagraphs.push(
@@ -522,6 +527,255 @@ export async function exportExamToDocx(project: ExportProjectInput): Promise<Blo
     });
   };
 
+  const generateEssayRubricDocxTable = (partList: ExamQuestion[]): (Paragraph | Table)[] => {
+    if (partList.length === 0) return [];
+    const elements: (Paragraph | Table)[] = [];
+
+    elements.push(
+      new Paragraph({
+        children: [
+          new TextRun({ text: 'PHẦN IV. HƯỚNG DẪN CHẤM VÀ BIỂU ĐIỂM TỰ LUẬN', bold: true, font: 'Times New Roman', size: 22, color: '1e3a8a' }),
+        ],
+        spacing: { before: 200, after: 60 },
+      })
+    );
+
+    elements.push(
+      new Paragraph({
+        children: [
+          new TextRun({ 
+            text: '(Hướng dẫn chấm gồm các ý chấm chi tiết, mỗi ý tính điểm 0,25đ hoặc 0,5đ theo quy định khảo thí)', 
+            italics: true, 
+            font: 'Times New Roman', 
+            size: 20, 
+            color: '4B5563' 
+          }),
+        ],
+        spacing: { after: 120 },
+      })
+    );
+
+    const tableRows: TableRow[] = [];
+
+    // Header row: 3 columns (Câu, Nội dung / Yêu cầu cần đạt, Điểm)
+    tableRows.push(
+      new TableRow({
+        tableHeader: true,
+        children: [
+          new TableCell({
+            width: { size: 15, type: WidthType.PERCENTAGE },
+            borders: allBorders,
+            margins: cellMargins,
+            shading: { fill: 'E2E8F0' },
+            verticalAlign: VerticalAlign.CENTER,
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [new TextRun({ text: 'Câu', bold: true, font: 'Times New Roman', size: 20 })],
+              }),
+            ],
+          }),
+          new TableCell({
+            width: { size: 70, type: WidthType.PERCENTAGE },
+            borders: allBorders,
+            margins: cellMargins,
+            shading: { fill: 'E2E8F0' },
+            verticalAlign: VerticalAlign.CENTER,
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [new TextRun({ text: 'Nội dung / Yêu cầu cần đạt', bold: true, font: 'Times New Roman', size: 20 })],
+              }),
+            ],
+          }),
+          new TableCell({
+            width: { size: 15, type: WidthType.PERCENTAGE },
+            borders: allBorders,
+            margins: cellMargins,
+            shading: { fill: 'E2E8F0' },
+            verticalAlign: VerticalAlign.CENTER,
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [new TextRun({ text: 'Điểm', bold: true, font: 'Times New Roman', size: 20 })],
+              }),
+            ],
+          }),
+        ],
+      })
+    );
+
+    let totalEssayPts = 0;
+
+    partList.forEach((q, qIdx) => {
+      const structured = parseEssayQuestionRubric(q, qIdx);
+      totalEssayPts += structured.totalPoints;
+      const itemCount = structured.items.length;
+
+      structured.items.forEach((item, itemIdx) => {
+        const rowChildren: TableCell[] = [];
+
+        // For the first item in the question, render the Question Cell with rowSpan
+        if (itemIdx === 0) {
+          rowChildren.push(
+            new TableCell({
+              rowSpan: itemCount,
+              borders: allBorders,
+              margins: cellMargins,
+              shading: { fill: 'F8FAFC' },
+              verticalAlign: VerticalAlign.CENTER,
+              children: [
+                new Paragraph({
+                  alignment: AlignmentType.CENTER,
+                  children: [new TextRun({ text: `Câu ${qIdx + 1}`, bold: true, font: 'Times New Roman', size: 20 })],
+                }),
+                new Paragraph({
+                  alignment: AlignmentType.CENTER,
+                  children: [new TextRun({ text: `(${structured.totalPointsFormatted} điểm)`, italics: true, font: 'Times New Roman', size: 18 })],
+                  spacing: { before: 30, after: 30 },
+                }),
+                new Paragraph({
+                  alignment: AlignmentType.CENTER,
+                  children: [new TextRun({ text: `[${q.cognitiveLevel || 'Vận dụng cao'}]`, font: 'Times New Roman', size: 16, color: '64748B' })],
+                }),
+              ],
+            })
+          );
+        }
+
+        // Column 2: Nội dung của từng ý
+        const contentParas: Paragraph[] = [
+          new Paragraph({
+            children: [
+              ...(item.subLabel ? [new TextRun({ text: `${item.subLabel} `, bold: true, font: 'Times New Roman', size: 20 })] : []),
+              new TextRun({ text: cleanLatex(item.content), font: 'Times New Roman', size: 20 }),
+            ],
+            spacing: { before: 20, after: 20 },
+          }),
+        ];
+
+        // If this is the last item and question has additional explanation, append it
+        if (itemIdx === itemCount - 1 && q.explanation) {
+          contentParas.push(
+            new Paragraph({
+              children: [
+                new TextRun({ text: '• Lời giải chi tiết / Ghi chú: ', italics: true, bold: true, color: '1E40AF', font: 'Times New Roman', size: 18 }),
+                new TextRun({ text: cleanLatex(q.explanation), italics: true, color: '334155', font: 'Times New Roman', size: 18 }),
+              ],
+              spacing: { before: 40, after: 20 },
+            })
+          );
+        }
+
+        rowChildren.push(
+          new TableCell({
+            borders: allBorders,
+            margins: cellMargins,
+            verticalAlign: VerticalAlign.CENTER,
+            children: contentParas,
+          })
+        );
+
+        // Column 3: Điểm của từng ý
+        rowChildren.push(
+          new TableCell({
+            borders: allBorders,
+            margins: cellMargins,
+            verticalAlign: VerticalAlign.CENTER,
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [new TextRun({ text: item.pointsFormatted, bold: true, font: 'Times New Roman', size: 20 })],
+              }),
+            ],
+          })
+        );
+
+        tableRows.push(new TableRow({ children: rowChildren }));
+      });
+
+      // Dòng chốt tổng điểm cho từng câu
+      tableRows.push(
+        new TableRow({
+          children: [
+            new TableCell({
+              columnSpan: 2,
+              borders: allBorders,
+              margins: cellMargins,
+              shading: { fill: 'F1F5F9' },
+              children: [
+                new Paragraph({
+                  alignment: AlignmentType.RIGHT,
+                  children: [
+                    new TextRun({ text: `Tổng điểm Câu ${qIdx + 1}: `, bold: true, italics: true, font: 'Times New Roman', size: 19 }),
+                  ],
+                }),
+              ],
+            }),
+            new TableCell({
+              borders: allBorders,
+              margins: cellMargins,
+              shading: { fill: 'F1F5F9' },
+              verticalAlign: VerticalAlign.CENTER,
+              children: [
+                new Paragraph({
+                  alignment: AlignmentType.CENTER,
+                  children: [
+                    new TextRun({ text: `${structured.totalPointsFormatted}`, bold: true, font: 'Times New Roman', size: 20, color: '1E3A8A' }),
+                  ],
+                }),
+              ],
+            }),
+          ],
+        })
+      );
+    });
+
+    // Dòng tổng điểm toàn bộ phần tự luận
+    tableRows.push(
+      new TableRow({
+        children: [
+          new TableCell({
+            columnSpan: 2,
+            borders: allBorders,
+            margins: cellMargins,
+            shading: { fill: 'E2E8F0' },
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.RIGHT,
+                children: [
+                  new TextRun({ text: 'TỔNG ĐIỂM TOÀN BỘ PHẦN TỰ LUẬN: ', bold: true, font: 'Times New Roman', size: 20 }),
+                ],
+              }),
+            ],
+          }),
+          new TableCell({
+            borders: allBorders,
+            margins: cellMargins,
+            shading: { fill: 'E2E8F0' },
+            verticalAlign: VerticalAlign.CENTER,
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [
+                  new TextRun({ text: `${formatPoint(totalEssayPts)} điểm`, bold: true, font: 'Times New Roman', size: 20, color: 'B91C1C' }),
+                ],
+              }),
+            ],
+          }),
+        ],
+      })
+    );
+
+    const rubricTable = new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      rows: tableRows,
+    });
+
+    elements.push(rubricTable);
+    return elements;
+  };
+
   const part1Base = sampleExamQuestions.filter(q => q.type === 'multiple_choice');
   const part2Base = sampleExamQuestions.filter(q => q.type === 'true_false');
   const part3Base = sampleExamQuestions.filter(q => q.type === 'short_answer');
@@ -530,7 +784,11 @@ export async function exportExamToDocx(project: ExportProjectInput): Promise<Blo
   renderPartSolutions('PHẦN I. CÂU TRẮC NGHIỆM NHIỀU PHƯƠNG ÁN LỰA CHỌN', part1Base);
   renderPartSolutions('PHẦN II. CÂU TRẮC NGHIỆM ĐÚNG SAI', part2Base);
   renderPartSolutions('PHẦN III. CÂU TRẮC NGHIỆM TRẢ LỜI NGẮN', part3Base);
-  renderPartSolutions('PHẦN IV. TỰ LUẬN', part4Base);
+  
+  // Phần IV: Tự luận được trình bày dưới dạng BẢNG HƯỚNG DẪN CHẤM & BIỂU ĐIỂM CHUẨN 3 CỘT
+  if (part4Base.length > 0) {
+    docParagraphs.push(...generateEssayRubricDocxTable(part4Base));
+  }
 
   // =========================================================================
   // PHẦN C: BẢNG SOI ĐÁP ÁN CÁC MÃ ĐỀ TRỘN (TẤT CẢ CÁC MÃ ĐỀ)
@@ -592,6 +850,35 @@ export async function exportExamToDocx(project: ExportProjectInput): Promise<Blo
 
       keyTableRows.push(new TableRow({ children: rowCells }));
     });
+
+    // Thêm dòng thống kê tỉ lệ phân bổ A, B, C, D cho từng mã đề trong file Word
+    const statsCells: TableCell[] = [
+      new TableCell({
+        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'Tỉ lệ A/B/C/D', bold: true, italics: true, font: 'Times New Roman' })] })],
+      }),
+    ];
+
+    activeVariants.forEach(v => {
+      const p1Questions = v.questions.filter(q => q.type === 'multiple_choice');
+      const countA = p1Questions.filter(q => (q.correctOption || '').toUpperCase() === 'A').length;
+      const countB = p1Questions.filter(q => (q.correctOption || '').toUpperCase() === 'B').length;
+      const countC = p1Questions.filter(q => (q.correctOption || '').toUpperCase() === 'C').length;
+      const countD = p1Questions.filter(q => (q.correctOption || '').toUpperCase() === 'D').length;
+      statsCells.push(
+        new TableCell({
+          children: [
+            new Paragraph({ 
+              alignment: AlignmentType.CENTER, 
+              children: [
+                new TextRun({ text: `${countA}A-${countB}B-${countC}C-${countD}D`, bold: true, font: 'Times New Roman' })
+              ] 
+            })
+          ],
+        })
+      );
+    });
+
+    keyTableRows.push(new TableRow({ children: statsCells }));
 
     const keyDocxTable = new Table({
       width: { size: 100, type: WidthType.PERCENTAGE },

@@ -1,5 +1,6 @@
 import { ExamProject, ExamPartConfigs } from '../types';
 import { generateShuffledExamVariants } from '../utils/shuffler';
+import { balanceMultipleChoiceQuestions } from '../utils/answerBalancer';
 
 export const DEFAULT_PART_CONFIGS: ExamPartConfigs = {
   part1: {
@@ -280,8 +281,8 @@ export const SAMPLE_TOAN_12_PROJECT: ExamProject = (() => {
         }
       }
     ],
-    sampleExamQuestions: baseQuestions,
-    shuffledVariants: generateShuffledExamVariants(baseQuestions),
+    sampleExamQuestions: balanceMultipleChoiceQuestions(baseQuestions, 101),
+    shuffledVariants: generateShuffledExamVariants(balanceMultipleChoiceQuestions(baseQuestions, 101)),
     notes: 'Đề kiểm tra mẫu chuẩn cấu trúc Bộ GD&ĐT từ kỳ thi 2025.'
   };
 })();
