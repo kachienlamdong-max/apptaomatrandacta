@@ -160,6 +160,28 @@ export interface ShuffledExamVariant {
   part3AnswerKeys?: Record<number, string>;
 }
 
+export interface StudyGuideQuestionSlot {
+  slotId: string;
+  slotNumber: number; // e.g. 1, 2, 3... tương ứng vị trí câu trong đề thi gốc
+  part: 'part1' | 'part2' | 'part3' | 'part4';
+  partName: string;
+  topic: string;
+  unit: string;
+  cognitiveLevel: CognitiveLevel;
+  learningObjective?: string;
+  points: number;
+  questions: ExamQuestion[]; // Các câu hỏi rèn luyện nhân lên (mặc định 4 câu) hoàn toàn khác nhau cùng mức độ, dạng thức
+}
+
+export interface StudyGuideData {
+  header: ExamHeaderConfig;
+  multiplier: number; // e.g. 4
+  totalSlots: number;
+  totalQuestions: number;
+  slots: StudyGuideQuestionSlot[];
+  generatedAt: string;
+}
+
 export interface ExamProject {
   id: string;
   createdAt: string;
@@ -169,6 +191,7 @@ export interface ExamProject {
   specification: SpecificationItem[];
   sampleExamQuestions: ExamQuestion[];
   shuffledVariants: ShuffledExamVariant[];
+  studyGuide?: StudyGuideData;
   notes?: string;
 }
 

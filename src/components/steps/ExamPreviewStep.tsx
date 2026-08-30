@@ -30,6 +30,8 @@ import { balanceMultipleChoiceQuestions, calculateAnswerDistribution } from '../
 import { exportSingleVariantToDocx, exportComplianceReportToDocx } from '../../utils/docxExport';
 import { performMoetComplianceAudit } from '../../utils/complianceAudit';
 import { parseEssayQuestionRubric, formatPoint } from '../../utils/rubricParser';
+import { StudyGuideView } from '../studyGuide/StudyGuideView';
+import { StudyGuideData } from '../../types';
 
 interface ExamPreviewStepProps {
   header: ExamHeaderConfig;
@@ -44,6 +46,8 @@ interface ExamPreviewStepProps {
   onGenerateAiExam?: () => void;
   matrix?: MatrixRow[];
   specification?: SpecificationItem[];
+  studyGuide?: StudyGuideData;
+  onUpdateStudyGuide?: (studyGuide: StudyGuideData) => void;
 }
 
 export const ExamPreviewStep: React.FC<ExamPreviewStepProps> = ({
@@ -58,9 +62,11 @@ export const ExamPreviewStep: React.FC<ExamPreviewStepProps> = ({
   onSyncQuestionsFromMatrix,
   onGenerateAiExam,
   matrix = [],
-  specification = []
+  specification = [],
+  studyGuide,
+  onUpdateStudyGuide
 }) => {
-  const [viewMode, setViewMode] = useState<'master' | 'variants' | 'matrix_key' | 'checklist'>('master');
+  const [viewMode, setViewMode] = useState<'master' | 'variants' | 'matrix_key' | 'study_guide' | 'checklist'>('master');
   const [variantCount, setVariantCount] = useState<number>(variants.length > 0 ? variants.length : 4);
   const [startCode, setStartCode] = useState<number>(101);
   const [selectedVariantCode, setSelectedVariantCode] = useState<string>(variants[0]?.examCode || (variants[0] as any)?.code || '101');
@@ -199,6 +205,18 @@ export const ExamPreviewStep: React.FC<ExamPreviewStepProps> = ({
             }`}
           >
             📊 Bảng Soi Đáp Án ({activeVariants.length} Mã Đề)
+          </button>
+          <button
+            id="view-btn-study-guide"
+            onClick={() => setViewMode('study_guide')}
+            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+              viewMode === 'study_guide'
+                ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-slate-900 shadow-xs scale-105'
+                : 'text-amber-800 bg-amber-50/80 hover:bg-amber-100 hover:text-amber-900 border border-amber-200/60'
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+            <span>Bộ Đề Cương Ôn Tập (Nhân 4 câu)</span>
           </button>
           <button
             id="view-btn-checklist"
@@ -1355,6 +1373,28 @@ export const ExamPreviewStep: React.FC<ExamPreviewStepProps> = ({
             </div>
           </div>
 
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 5. VIEW: BỘ ĐỀ CƯƠNG ÔN TẬP NHÂN 4 CÂU TƯƠNG ĐƯƠNG THEO MA TRẬN & ĐẶC TẢ    */}
+      {/* ========================================================================= */}
+      {viewMode === 'study_guide' && (
+        <div className="animate-in fade-in duration-150">
+          <StudyGuideView
+            project={{
+              id: 'current-project',
+              header,
+              matrix,
+              specification,
+              sampleExamQuestions: questions,
+              shuffledVariants: activeVariants,
+              studyGuide,
+              createdAt: '',
+              updatedAt: ''
+            }}
+            onUpdateStudyGuide={onUpdateStudyGuide}
+          />
         </div>
       )}
 

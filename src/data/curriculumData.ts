@@ -397,19 +397,152 @@ export const SUBJECTS_LIST: SubjectInfo[] = [
         topics: [
           {
             name: 'Địa lí tự nhiên Việt Nam',
-            units: ['Vị trí địa lí và phạm vi lãnh thổ', 'Đặc điểm tự nhiên, địa hình, khí hậu, tài nguyên']
+            units: [
+              'Vị trí địa lí và phạm vi lãnh thổ (Điểm cực, vùng biển, 34 đơn vị hành chính cấp tỉnh)',
+              'Thiên nhiên nhiệt đới ẩm gió mùa (Khí hậu, địa hình xâm thực - bồi tụ, sông ngòi, thổ nhưỡng)',
+              'Sự phân hoá đa dạng của thiên nhiên (Bắc - Nam, Đông - Tây, theo độ cao, các miền địa lí)',
+              'Sử dụng hợp lí tài nguyên thiên nhiên và bảo vệ môi trường'
+            ]
           },
           {
-            name: 'Địa lí dân cư và đô thị hóa',
-            units: ['Đặc điểm dân số và phân bố dân cư', 'Lao động và việc làm', 'Đô thị hóa ở Việt Nam']
+            name: 'Địa lí dân cư Việt Nam',
+            units: [
+              'Dân số Việt Nam (Quy mô, gia tăng, cơ cấu dân số vàng và già hoá, phân bố dân cư)',
+              'Lao động và việc làm (Đặc điểm nguồn lao động, chất lượng, chuyển dịch cơ cấu việc làm)',
+              'Đô thị hoá ở Việt Nam (Đặc điểm, ảnh hưởng tích cực và tiêu cực, mạng lưới đô thị)'
+            ]
           },
           {
             name: 'Địa lí các ngành kinh tế',
-            units: ['Nông nghiệp, lâm nghiệp và thủy sản', 'Công nghiệp và năng lượng', 'Dịch vụ, giao thông và du lịch']
+            units: [
+              'Chuyển dịch cơ cấu kinh tế (Theo ngành, thành phần kinh tế và lãnh thổ)',
+              'Vấn đề phát triển ngành nông nghiệp (Trồng trọt lúa, cây công nghiệp, cây ăn quả, chăn nuôi)',
+              'Vấn đề phát triển ngành lâm nghiệp và thủy sản',
+              'Địa lí ngành công nghiệp và tổ chức lãnh thổ công nghiệp',
+              'Địa lí các ngành dịch vụ (Giao thông vận tải, bưu chính viễn thông, thương mại, du lịch)'
+            ]
           },
           {
-            name: 'Địa lí các vùng kinh tế trọng điểm',
-            units: ['Trung du miền núi Bắc Bộ, Đồng bằng sông Hồng', 'Bắc Trung Bộ và Duyên hải Nam Trung Bộ', 'Tây Nguyên, Đông Nam Bộ, Đồng bằng sông Cửu Long', 'Kinh tế biển đảo']
+            name: 'Địa lí các vùng kinh tế - xã hội',
+            units: [
+              'Vùng Trung du và miền núi phía Bắc',
+              'Vùng Đồng bằng sông Hồng',
+              'Vùng Bắc Trung Bộ',
+              'Vùng Duyên hải Nam Trung Bộ và Tây Nguyên (Nam Trung Bộ)',
+              'Vùng Đông Nam Bộ',
+              'Vùng Đồng bằng sông Cửu Long',
+              'Phát triển kinh tế biển và đảm bảo quốc phòng an ninh vùng Biển Đông'
+            ]
+          },
+          {
+            name: 'Chuyên đề học tập Địa lí 12',
+            units: [
+              'Chuyên đề 12.1: Thiên tai và biện pháp phòng chống (Bão, lũ lụt, hạn hán, sạt lở đất, xâm nhập mặn)',
+              'Chuyên đề 12.2: Phát triển vùng kinh tế và các vùng kinh tế trọng điểm',
+              'Chuyên đề 12.3: Phát triển làng nghề truyền thống ở Việt Nam'
+            ]
+          }
+        ]
+      },
+      {
+        grade: 'Lớp 11',
+        topics: [
+          {
+            name: 'Một số vấn đề kinh tế - xã hội thế giới',
+            units: [
+              'Sự khác biệt về trình độ phát triển KTXH của các nhóm nước (GNI/người, cơ cấu GDP, HDI)',
+              'Toàn cầu hoá và khu vực hoá kinh tế',
+              'Một số tổ chức quốc tế và khu vực (UN, WTO, IMF, APEC) và An ninh toàn cầu',
+              'Nền kinh tế tri thức'
+            ]
+          },
+          {
+            name: 'Địa lí khu vực Mỹ La-tinh',
+            units: [
+              'Vị trí địa lí, điều kiện tự nhiên, dân cư và xã hội khu vực Mỹ La-tinh',
+              'Kinh tế khu vực Mỹ La-tinh và vấn đề phát triển KTXH Cộng hoà Liên bang Bra-xin'
+            ]
+          },
+          {
+            name: 'Liên minh Châu Âu (EU)',
+            units: [
+              'Quy mô, mục tiêu, thể chế hoạt động và vị thế kinh tế của EU trên thế giới',
+              'Hợp tác và liên kết kinh tế trong EU (Thị trường chung, đồng Euro, chuyển đổi số và xanh)'
+            ]
+          },
+          {
+            name: 'Khu vực Đông Nam Á (ASEAN)',
+            units: [
+              'Vị trí địa lí, điều kiện tự nhiên, dân cư và xã hội khu vực Đông Nam Á',
+              'Kinh tế khu vực Đông Nam Á và Hiệp hội các quốc gia Đông Nam Á (ASEAN)'
+            ]
+          },
+          {
+            name: 'Địa lí một số quốc gia lớn trên thế giới',
+            units: [
+              'Hợp chúng quốc Hoa Kỳ',
+              'Liên bang Nga',
+              'Nhật Bản',
+              'Cộng hoà Nhân dân Trung Hoa',
+              'Ô-xtrây-li-a và Cộng hoà Nam Phi'
+            ]
+          },
+          {
+            name: 'Chuyên đề học tập Địa lí 11',
+            units: [
+              'Chuyên đề 11.1: Một số vấn đề về khu vực Đông Nam Á (Ủy hội sông Mê Công MRC, Hợp tác Biển Đông)',
+              'Chuyên đề 11.2: Một số vấn đề về du lịch thế giới và định hướng nghề nghiệp',
+              'Chuyên đề 11.3: Cuộc cách mạng công nghiệp lần thứ tư (4.0)'
+            ]
+          }
+        ]
+      },
+      {
+        grade: 'Lớp 10',
+        topics: [
+          {
+            name: 'Sử dụng bản đồ và phương pháp biểu hiện',
+            units: [
+              'Môn Địa lí với định hướng nghề nghiệp',
+              'Một số phương pháp biểu hiện các đối tượng địa lí trên bản đồ (Kí hiệu, chuyển động, bản đồ - biểu đồ, chấm điểm, khoanh vùng)',
+              'Sử dụng bản đồ trong học tập và đời sống, ứng dụng GPS và bản đồ số'
+            ]
+          },
+          {
+            name: 'Địa lí tự nhiên - Trái Đất và Thạch quyển',
+            units: [
+              'Sự hình thành Trái Đất, vỏ Trái Đất và vật liệu cấu tạo vỏ Trái Đất (đá macma, trầm tích, biến chất)',
+              'Hệ quả địa lí các chuyển động của Trái Đất (Hiện tượng ngày đêm luân phiên, giờ trên Trái Đất, mùa, ngày đêm dài ngắn theo mùa)',
+              'Thạch quyển và thuyết kiến tạo mảng (các mảng xô vào nhau hoặc tách xa nhau)',
+              'Tác động của nội lực và ngoại lực đến địa hình bề mặt Trái Đất'
+            ]
+          },
+          {
+            name: 'Địa lí tự nhiên - Khí quyển, Thủy quyển và Sinh quyển',
+            units: [
+              'Khí quyển, các yếu tố khí hậu (Nhiệt độ không khí, khí áp, các đới gió chính, nguyên nhân và phân bố mưa)',
+              'Đọc bản đồ các đới và các kiểu khí hậu trên Trái Đất',
+              'Thủy quyển, nước trên lục địa, chế độ nước sông và đại dương',
+              'Thổ nhưỡng quyển và Sinh quyển, các quy luật địa lí (Quy luật thống nhất và hoàn chỉnh, quy luật địa đới và phi địa đới)'
+            ]
+          },
+          {
+            name: 'Địa lí kinh tế - xã hội đại cương',
+            units: [
+              'Địa lí dân cư (Quy mô dân số, gia tăng dân số, cơ cấu dân số, phân bố dân cư và đô thị hoá)',
+              'Các nguồn lực phát triển kinh tế, cơ cấu kinh tế và một số chỉ tiêu GDP, GNI',
+              'Địa lí ngành nông nghiệp, lâm nghiệp, thuỷ sản',
+              'Địa lí ngành công nghiệp và dịch vụ',
+              'Môi trường và phát triển bền vững, tăng trưởng xanh'
+            ]
+          },
+          {
+            name: 'Chuyên đề học tập Địa lí 10',
+            units: [
+              'Chuyên đề 10.1: Biến đổi khí hậu (Khái niệm, biểu hiện tăng nhiệt độ, biến động mưa, mực nước biển dâng; nguyên nhân tự nhiên và con người; tác động và giải pháp ứng phó)',
+              'Chuyên đề 10.2: Đô thị hoá ở các nước phát triển và đang phát triển',
+              'Chuyên đề 10.3: Phương pháp viết báo cáo địa lí'
+            ]
           }
         ]
       }

@@ -1,4 +1,13 @@
-import { ExamQuestion, ExamHeaderConfig, MatrixRow, SpecificationItem, MultipleChoiceOption, TrueFalseSubItem } from '../types';
+import { 
+  ExamQuestion, 
+  ExamHeaderConfig, 
+  MatrixRow, 
+  SpecificationItem, 
+  MultipleChoiceOption, 
+  TrueFalseSubItem,
+  StudyGuideData,
+  StudyGuideQuestionSlot
+} from '../types';
 import { getQuestionBankForSubject, RawMCQ, RawTF, RawShort, RawEssay } from './questionBanks';
 import { balanceMultipleChoiceQuestions } from './answerBalancer';
 
@@ -218,6 +227,268 @@ export function generateConsistentQuestionsFromMatrixAndSpec(
   const balancedQuestions = balanceMultipleChoiceQuestions(questions, 101);
 
   return balancedQuestions;
+}
+
+// =========================================================================
+// STUDY GUIDE / REVIEW QUESTION BANK GENERATOR (x4 VARIANT EQUIVALENTS)
+// =========================================================================
+
+export function generateStudyGuideFromMatrixAndSpec(
+  header: ExamHeaderConfig,
+  matrix: MatrixRow[],
+  specification: SpecificationItem[] = [],
+  multiplier: number = 4
+): StudyGuideData {
+  const subjectKey = normalizeSubjectKey(header.subject);
+  const slots: StudyGuideQuestionSlot[] = [];
+
+  const partConfigs = header.partConfigs || {
+    part1: { name: 'Phần I (TN 4 lựa chọn)', pointsPerQuestion: 0.25, targetQuestions: 12, enabled: true },
+    part2: { name: 'Phần II (Đúng/Sai)', pointsPerQuestion: 1.0, targetQuestions: 4, enabled: true },
+    part3: { name: 'Phần III (Trả lời ngắn)', pointsPerQuestion: 0.5, targetQuestions: 6, enabled: true },
+    part4: { name: 'Phần IV (Tự luận)', pointsPerQuestion: 1.0, targetQuestions: 0, enabled: false },
+  };
+
+  const isP1Active = (partConfigs.part1?.enabled !== false) && ((partConfigs.part1?.targetQuestions ?? 12) > 0);
+  const isP2Active = (partConfigs.part2?.enabled !== false) && ((partConfigs.part2?.targetQuestions ?? 4) > 0);
+  const isP3Active = (partConfigs.part3?.enabled !== false) && ((partConfigs.part3?.targetQuestions ?? 6) > 0);
+  const isP4Active = (partConfigs.part4?.enabled !== false) && ((partConfigs.part4?.targetQuestions ?? 2) > 0);
+
+  const p1Pts = isP1Active ? (partConfigs.part1?.pointsPerQuestion ?? 0.25) : 0;
+  const p2Pts = isP2Active ? (partConfigs.part2?.pointsPerQuestion ?? 1.0) : 0;
+  const p3Pts = isP3Active ? (partConfigs.part3?.pointsPerQuestion ?? 0.5) : 0;
+  const p4Pts = isP4Active ? (partConfigs.part4?.pointsPerQuestion ?? 1.0) : 0;
+
+  let activeMatrix = sanitizeMatrixForPartConfigs(matrix, partConfigs);
+  const p1Count = activeMatrix.reduce((s, r) => s + r.part1_nb + r.part1_th + r.part1_vd + r.part1_vdc, 0);
+  const p2Count = activeMatrix.reduce((s, r) => s + r.part2_nb + r.part2_th + r.part2_vd + r.part2_vdc, 0);
+  const p3Count = activeMatrix.reduce((s, r) => s + r.part3_nb + r.part3_th + r.part3_vd + r.part3_vdc, 0);
+  const p4Count = activeMatrix.reduce((s, r) => s + r.part4_nb + r.part4_th + r.part4_vd + r.part4_vdc, 0);
+
+  const needsAutoFill = 
+    (isP1Active && p1Count === 0 && (partConfigs.part1?.targetQuestions ?? 0) > 0) ||
+    (isP2Active && p2Count === 0 && (partConfigs.part2?.targetQuestions ?? 0) > 0) ||
+    (isP3Active && p3Count === 0 && (partConfigs.part3?.targetQuestions ?? 0) > 0) ||
+    (isP4Active && p4Count === 0 && (partConfigs.part4?.targetQuestions ?? 0) > 0);
+
+  if (needsAutoFill && activeMatrix.length > 0) {
+    activeMatrix = autoBalanceMatrixToTarget(activeMatrix, partConfigs);
+  }
+
+  const globalUsed = new Set<string>();
+  let globalSlotNumber = 1;
+
+  // PART 1 (MCQ)
+  if (isP1Active) {
+    activeMatrix.forEach((row, rowIndex) => {
+      const spec = specification[rowIndex];
+      const rowCounts = [
+        { level: 'Nhận biết' as const, count: row.part1_nb || 0, obj: spec?.learningObjectives?.nb },
+        { level: 'Thông hiểu' as const, count: row.part1_th || 0, obj: spec?.learningObjectives?.th },
+        { level: 'Vận dụng' as const, count: row.part1_vd || 0, obj: spec?.learningObjectives?.vd },
+        { level: 'Vận dụng cao' as const, count: row.part1_vdc || 0, obj: spec?.learningObjectives?.vdc },
+      ];
+
+      rowCounts.forEach(({ level, count, obj }) => {
+        for (let i = 0; i < count; i++) {
+          const slotNum = globalSlotNumber++;
+          const slotQuestions: ExamQuestion[] = [];
+          for (let m = 0; m < multiplier; m++) {
+            const q = getUniqueMCQuestion({
+              subjectKey,
+              subjectName: header.subject,
+              grade: header.grade,
+              topic: row.topic,
+              unit: row.unit,
+              level,
+              objective: obj,
+              orderNumber: slotNum * 100 + m + 1,
+              points: p1Pts,
+              index: (i * multiplier + m) % 50,
+              rowIndex,
+              usedContents: globalUsed
+            });
+            q.orderNumber = slotNum;
+            slotQuestions.push(q);
+          }
+          const balancedSlotQuestions = balanceMultipleChoiceQuestions(slotQuestions, slotNum * 19 + 7);
+          slots.push({
+            slotId: `slot-p1-${slotNum}`,
+            slotNumber: slotNum,
+            part: 'part1',
+            partName: 'Phần I (Trắc nghiệm nhiều lựa chọn)',
+            topic: row.topic,
+            unit: row.unit,
+            cognitiveLevel: level,
+            learningObjective: obj,
+            points: p1Pts,
+            questions: balancedSlotQuestions
+          });
+        }
+      });
+    });
+  }
+
+  // PART 2 (True/False)
+  if (isP2Active) {
+    activeMatrix.forEach((row, rowIndex) => {
+      const spec = specification[rowIndex];
+      const rowCounts = [
+        { level: 'Nhận biết' as const, count: row.part2_nb || 0, obj: spec?.learningObjectives?.nb },
+        { level: 'Thông hiểu' as const, count: row.part2_th || 0, obj: spec?.learningObjectives?.th },
+        { level: 'Vận dụng' as const, count: row.part2_vd || 0, obj: spec?.learningObjectives?.vd },
+        { level: 'Vận dụng cao' as const, count: row.part2_vdc || 0, obj: spec?.learningObjectives?.vdc },
+      ];
+
+      rowCounts.forEach(({ level, count, obj }) => {
+        for (let i = 0; i < count; i++) {
+          const slotNum = globalSlotNumber++;
+          const slotQuestions: ExamQuestion[] = [];
+          for (let m = 0; m < multiplier; m++) {
+            const q = getUniqueTFQuestion({
+              subjectKey,
+              subjectName: header.subject,
+              grade: header.grade,
+              topic: row.topic,
+              unit: row.unit,
+              level,
+              objective: obj,
+              orderNumber: slotNum * 100 + m + 1,
+              points: p2Pts,
+              index: (i * multiplier + m) % 50,
+              rowIndex,
+              usedContents: globalUsed
+            });
+            q.orderNumber = slotNum;
+            slotQuestions.push(q);
+          }
+          slots.push({
+            slotId: `slot-p2-${slotNum}`,
+            slotNumber: slotNum,
+            part: 'part2',
+            partName: 'Phần II (Trắc nghiệm Đúng/Sai)',
+            topic: row.topic,
+            unit: row.unit,
+            cognitiveLevel: level,
+            learningObjective: obj,
+            points: p2Pts,
+            questions: slotQuestions
+          });
+        }
+      });
+    });
+  }
+
+  // PART 3 (Short Answer)
+  if (isP3Active) {
+    activeMatrix.forEach((row, rowIndex) => {
+      const spec = specification[rowIndex];
+      const rowCounts = [
+        { level: 'Nhận biết' as const, count: row.part3_nb || 0, obj: spec?.learningObjectives?.nb },
+        { level: 'Thông hiểu' as const, count: row.part3_th || 0, obj: spec?.learningObjectives?.th },
+        { level: 'Vận dụng' as const, count: row.part3_vd || 0, obj: spec?.learningObjectives?.vd },
+        { level: 'Vận dụng cao' as const, count: row.part3_vdc || 0, obj: spec?.learningObjectives?.vdc },
+      ];
+
+      rowCounts.forEach(({ level, count, obj }) => {
+        for (let i = 0; i < count; i++) {
+          const slotNum = globalSlotNumber++;
+          const slotQuestions: ExamQuestion[] = [];
+          for (let m = 0; m < multiplier; m++) {
+            const q = getUniqueShortQuestion({
+              subjectKey,
+              subjectName: header.subject,
+              grade: header.grade,
+              topic: row.topic,
+              unit: row.unit,
+              level,
+              objective: obj,
+              orderNumber: slotNum * 100 + m + 1,
+              points: p3Pts,
+              index: (i * multiplier + m) % 50,
+              rowIndex,
+              usedContents: globalUsed
+            });
+            q.orderNumber = slotNum;
+            slotQuestions.push(q);
+          }
+          slots.push({
+            slotId: `slot-p3-${slotNum}`,
+            slotNumber: slotNum,
+            part: 'part3',
+            partName: 'Phần III (Trắc nghiệm Trả lời ngắn)',
+            topic: row.topic,
+            unit: row.unit,
+            cognitiveLevel: level,
+            learningObjective: obj,
+            points: p3Pts,
+            questions: slotQuestions
+          });
+        }
+      });
+    });
+  }
+
+  // PART 4 (Essay)
+  if (isP4Active) {
+    activeMatrix.forEach((row, rowIndex) => {
+      const spec = specification[rowIndex];
+      const rowCounts = [
+        { level: 'Nhận biết' as const, count: row.part4_nb || 0, obj: spec?.learningObjectives?.nb },
+        { level: 'Thông hiểu' as const, count: row.part4_th || 0, obj: spec?.learningObjectives?.th },
+        { level: 'Vận dụng' as const, count: row.part4_vd || 0, obj: spec?.learningObjectives?.vd },
+        { level: 'Vận dụng cao' as const, count: row.part4_vdc || 0, obj: spec?.learningObjectives?.vdc },
+      ];
+
+      rowCounts.forEach(({ level, count, obj }) => {
+        for (let i = 0; i < count; i++) {
+          const slotNum = globalSlotNumber++;
+          const slotQuestions: ExamQuestion[] = [];
+          for (let m = 0; m < multiplier; m++) {
+            const q = getUniqueEssayQuestion({
+              subjectKey,
+              subjectName: header.subject,
+              grade: header.grade,
+              topic: row.topic,
+              unit: row.unit,
+              level,
+              objective: obj,
+              orderNumber: slotNum * 100 + m + 1,
+              points: p4Pts,
+              index: (i * multiplier + m) % 50,
+              rowIndex,
+              usedContents: globalUsed
+            });
+            q.orderNumber = slotNum;
+            slotQuestions.push(q);
+          }
+          slots.push({
+            slotId: `slot-p4-${slotNum}`,
+            slotNumber: slotNum,
+            part: 'part4',
+            partName: 'Phần IV (Tự luận)',
+            topic: row.topic,
+            unit: row.unit,
+            cognitiveLevel: level,
+            learningObjective: obj,
+            points: p4Pts,
+            questions: slotQuestions
+          });
+        }
+      });
+    });
+  }
+
+  const totalQuestions = slots.reduce((sum, s) => sum + s.questions.length, 0);
+
+  return {
+    header,
+    multiplier,
+    totalSlots: slots.length,
+    totalQuestions,
+    slots,
+    generatedAt: new Date().toISOString()
+  };
 }
 
 // -------------------------------------------------------------

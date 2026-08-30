@@ -12,7 +12,16 @@ import {
   HeadingLevel,
   VerticalAlign 
 } from 'docx';
-import { ExamProject, ExamQuestion, ExamHeaderConfig, ShuffledExamVariant, MatrixRow, SpecificationItem } from '../types';
+import { 
+  ExamProject, 
+  ExamQuestion, 
+  ExamHeaderConfig, 
+  ShuffledExamVariant, 
+  MatrixRow, 
+  SpecificationItem,
+  StudyGuideData,
+  StudyGuideQuestionSlot 
+} from '../types';
 import { generateShuffledExamVariants } from './shuffler';
 import { parseEssayQuestionRubric, formatPoint } from './rubricParser';
 
@@ -2203,6 +2212,671 @@ export async function exportFullExamToDocx(project: ExportProjectInput): Promise
   a.href = url;
   const count = project.shuffledVariants?.length || 4;
   const fileName = `Ho-so-de-kiem-tra-${count}-ma-de-${project.header.subject.replace(/\s+/g, '-')}-${project.header.grade.replace(/\s+/g, '-')}-Chuan-Bo-GDDT.docx`;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// =========================================================================
+// EXPORT STUDY GUIDE / REVIEW QUESTION BANK (x4 MULTIPLIER) TO DOCX
+// =========================================================================
+
+export interface ExportStudyGuideOptions {
+  mode?: 'full' | 'student' | 'answers_only'; // 'full' (câu hỏi + đáp án chi tiết), 'student' (chỉ câu hỏi làm bài), 'answers_only' (chỉ bảng đáp án & hướng dẫn chấm)
+}
+
+export async function exportStudyGuideToDocx(
+  project: ExportProjectInput,
+  studyGuide: StudyGuideData,
+  options: ExportStudyGuideOptions = { mode: 'full' }
+): Promise<void> {
+  const header = project.header;
+  const mode = options.mode || 'full';
+  const docParagraphs: (Paragraph | Table)[] = [];
+
+  const thinBorder = { style: BorderStyle.SINGLE, size: 4, color: 'CBD5E1' };
+  const allBorders = { top: thinBorder, bottom: thinBorder, left: thinBorder, right: thinBorder };
+  const cellMargins = { top: 120, bottom: 120, left: 140, right: 140 };
+
+  // 1. Official Ministry Header Table
+  const headerTable = new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    borders: {
+      top: { style: BorderStyle.NONE },
+      bottom: { style: BorderStyle.NONE },
+      left: { style: BorderStyle.NONE },
+      right: { style: BorderStyle.NONE },
+      insideHorizontal: { style: BorderStyle.NONE },
+      insideVertical: { style: BorderStyle.NONE },
+    },
+    rows: [
+      new TableRow({
+        children: [
+          new TableCell({
+            width: { size: 50, type: WidthType.PERCENTAGE },
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [
+                  new TextRun({ 
+                    text: header.provinceOrDept ? header.provinceOrDept.toUpperCase() : 'SỞ GIÁO DỤC VÀ ĐÀO TẠO', 
+                    font: 'Times New Roman', 
+                    size: 22 
+                  }),
+                ],
+              }),
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [
+                  new TextRun({ 
+                    text: header.schoolName ? header.schoolName.toUpperCase() : 'TRƯỜNG THPT CHU VĂN AN', 
+                    bold: true, 
+                    font: 'Times New Roman', 
+                    size: 22 
+                  }),
+                ],
+              }),
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [
+                  new TextRun({ text: '-----------------------', font: 'Times New Roman', size: 20 }),
+                ],
+              }),
+            ],
+          }),
+          new TableCell({
+            width: { size: 50, type: WidthType.PERCENTAGE },
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [
+                  new TextRun({ text: 'CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM', bold: true, font: 'Times New Roman', size: 22 }),
+                ],
+              }),
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [
+                  new TextRun({ text: 'Độc lập - Tự do - Hạnh phúc', font: 'Times New Roman', size: 22, italics: true }),
+                ],
+              }),
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [
+                  new TextRun({ text: '-----------------------', font: 'Times New Roman', size: 20 }),
+                ],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  });
+
+  docParagraphs.push(headerTable);
+  docParagraphs.push(new Paragraph({ text: '', spacing: { before: 120, after: 120 } }));
+
+  // Main Title
+  let titleSuffix = 'VÀ NGÂN HÀNG CÂU HỎI RÈN LUYỆN THEO MA TRẬN ĐẶC TẢ';
+  if (mode === 'student') {
+    titleSuffix = '- PHIẾU ÔN TẬP TỰ LUYỆN DÀNH CHO HỌC SINH';
+  } else if (mode === 'answers_only') {
+    titleSuffix = '- BẢNG ĐÁP ÁN & HƯỚNG DẪN CHẤM CHI TIẾT';
+  }
+
+  docParagraphs.push(
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      children: [
+        new TextRun({ 
+          text: `BỘ ĐỀ CƯƠNG ÔN TẬP ${titleSuffix}`, 
+          bold: true, 
+          font: 'Times New Roman', 
+          size: 26, 
+          color: '1E3A8A' 
+        }),
+      ],
+      spacing: { before: 160, after: 80 },
+    })
+  );
+
+  docParagraphs.push(
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      children: [
+        new TextRun({ 
+          text: `Môn: ${header.subject.toUpperCase()} - ${header.grade} | Bộ sách: ${header.curriculum} | Năm học: ${header.academicYear}`, 
+          bold: true, 
+          font: 'Times New Roman', 
+          size: 22, 
+          italics: true 
+        }),
+      ],
+      spacing: { after: 80 },
+    })
+  );
+
+  // Methodology info banner
+  const mult = studyGuide.multiplier || 4;
+  docParagraphs.push(
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      children: [
+        new TextRun({ 
+          text: `(Quy mô: ${studyGuide.totalSlots} vị trí ma trận × ${mult} câu hỏi tương đương = ${studyGuide.totalQuestions} câu hỏi rèn luyện chuẩn GDPT 2018)`, 
+          font: 'Times New Roman', 
+          size: 20, 
+          italics: true,
+          color: '2563EB'
+        }),
+      ],
+      spacing: { after: 200 },
+    })
+  );
+
+  // If mode != 'answers_only', output the study guide questions organized by Parts
+  if (mode !== 'answers_only') {
+    // -------------------------------------------------------------
+    // PART I: MULTIPLE CHOICE
+    // -------------------------------------------------------------
+    const p1Slots = studyGuide.slots.filter(s => s.part === 'part1');
+    if (p1Slots.length > 0) {
+      docParagraphs.push(
+        new Paragraph({
+          heading: HeadingLevel.HEADING_2,
+          children: [
+            new TextRun({
+              text: `PHẦN I. CÂU HỎI TRẮC NGHIỆM NHIỀU PHƯƠNG ÁN LỰA CHỌN (${p1Slots.length} vị trí ma trận × ${mult} = ${p1Slots.length * mult} câu rèn luyện)`,
+              bold: true,
+              font: 'Times New Roman',
+              size: 24,
+              color: '1E40AF'
+            }),
+          ],
+          spacing: { before: 240, after: 80 },
+        })
+      );
+      docParagraphs.push(
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: `Ghi chú: Mỗi vị trí câu trong ma trận được phát triển thành ${mult} câu hỏi tương đương hoàn toàn khác nhau (ký hiệu dạng .1, .2, .3, .4) cùng mức độ nhận thức để học sinh rèn luyện thuần thục.`,
+              italics: true,
+              font: 'Times New Roman',
+              size: 20,
+              color: '4B5563'
+            }),
+          ],
+          spacing: { after: 140 },
+        })
+      );
+
+      p1Slots.forEach((slot) => {
+        // Slot Header Box
+        docParagraphs.push(
+          new Paragraph({
+            children: [
+              new TextRun({ 
+                text: `◆ Vị trí Ma trận #${slot.slotNumber} - Chủ đề: ${slot.topic} | Nội dung: ${slot.unit} [Mức độ: ${slot.cognitiveLevel.toUpperCase()}]`, 
+                bold: true, 
+                font: 'Times New Roman', 
+                size: 21,
+                color: '0F172A'
+              }),
+            ],
+            spacing: { before: 180, after: 60 },
+          })
+        );
+        if (slot.learningObjective) {
+          docParagraphs.push(
+            new Paragraph({
+              indent: { left: 240 },
+              children: [
+                new TextRun({ text: '• Yêu cầu cần đạt: ', bold: true, italics: true, font: 'Times New Roman', size: 19, color: '4338CA' }),
+                new TextRun({ text: slot.learningObjective, italics: true, font: 'Times New Roman', size: 19, color: '475569' }),
+              ],
+              spacing: { after: 80 },
+            })
+          );
+        }
+
+        // Render each variant question
+        slot.questions.forEach((q, qIndex) => {
+          const qLabel = `Câu ${slot.slotNumber}.${qIndex + 1}`;
+          docParagraphs.push(
+            new Paragraph({
+              children: [
+                new TextRun({ text: `${qLabel}: `, bold: true, font: 'Times New Roman', size: 22 }),
+                new TextRun({ text: cleanLatex(q.content), font: 'Times New Roman', size: 22 }),
+              ],
+              spacing: { before: 100, after: 60 },
+            })
+          );
+
+          if (q.options && q.options.length > 0) {
+            const optCells = q.options.map((opt) => {
+              return new TableCell({
+                width: { size: 25, type: WidthType.PERCENTAGE },
+                borders: {
+                  top: { style: BorderStyle.NONE },
+                  bottom: { style: BorderStyle.NONE },
+                  left: { style: BorderStyle.NONE },
+                  right: { style: BorderStyle.NONE },
+                },
+                children: [
+                  new Paragraph({
+                    children: [
+                      new TextRun({ text: `${opt.key}. `, bold: true, font: 'Times New Roman', size: 21 }),
+                      new TextRun({ text: cleanLatex(opt.content), font: 'Times New Roman', size: 21 }),
+                    ],
+                  }),
+                ],
+              });
+            });
+
+            docParagraphs.push(
+              new Table({
+                width: { size: 100, type: WidthType.PERCENTAGE },
+                rows: [new TableRow({ children: optCells })],
+              })
+            );
+          }
+
+          if (mode === 'full' && q.explanation) {
+            docParagraphs.push(
+              new Paragraph({
+                indent: { left: 240 },
+                children: [
+                  new TextRun({ text: `[Đáp án: ${q.correctOption}] `, bold: true, color: '15803D', font: 'Times New Roman', size: 20 }),
+                  new TextRun({ text: `Lời giải: ${cleanLatex(q.explanation)}`, italics: true, font: 'Times New Roman', size: 20, color: '334155' }),
+                ],
+                spacing: { before: 40, after: 100 },
+              })
+            );
+          }
+        });
+      });
+    }
+
+    // -------------------------------------------------------------
+    // PART II: TRUE / FALSE
+    // -------------------------------------------------------------
+    const p2Slots = studyGuide.slots.filter(s => s.part === 'part2');
+    if (p2Slots.length > 0) {
+      docParagraphs.push(
+        new Paragraph({
+          heading: HeadingLevel.HEADING_2,
+          children: [
+            new TextRun({
+              text: `PHẦN II. CÂU HỎI TRẮC NGHIỆM ĐÚNG / SAI (${p2Slots.length} vị trí ma trận × ${mult} = ${p2Slots.length * mult} câu rèn luyện)`,
+              bold: true,
+              font: 'Times New Roman',
+              size: 24,
+              color: '1E40AF'
+            }),
+          ],
+          spacing: { before: 260, after: 80 },
+        })
+      );
+
+      p2Slots.forEach((slot) => {
+        docParagraphs.push(
+          new Paragraph({
+            children: [
+              new TextRun({ 
+                text: `◆ Vị trí Ma trận #${slot.slotNumber} - Chủ đề: ${slot.topic} | Nội dung: ${slot.unit} [Mức độ: ${slot.cognitiveLevel.toUpperCase()}]`, 
+                bold: true, 
+                font: 'Times New Roman', 
+                size: 21,
+                color: '0F172A'
+              }),
+            ],
+            spacing: { before: 180, after: 60 },
+          })
+        );
+        if (slot.learningObjective) {
+          docParagraphs.push(
+            new Paragraph({
+              indent: { left: 240 },
+              children: [
+                new TextRun({ text: '• Yêu cầu cần đạt: ', bold: true, italics: true, font: 'Times New Roman', size: 19, color: '4338CA' }),
+                new TextRun({ text: slot.learningObjective, italics: true, font: 'Times New Roman', size: 19, color: '475569' }),
+              ],
+              spacing: { after: 80 },
+            })
+          );
+        }
+
+        slot.questions.forEach((q, qIndex) => {
+          const qLabel = `Câu ${slot.slotNumber}.${qIndex + 1}`;
+          docParagraphs.push(
+            new Paragraph({
+              children: [
+                new TextRun({ text: `${qLabel}: `, bold: true, font: 'Times New Roman', size: 22 }),
+                new TextRun({ text: cleanLatex(q.content), font: 'Times New Roman', size: 22 }),
+              ],
+              spacing: { before: 100, after: 60 },
+            })
+          );
+
+          if (q.trueFalseItems && q.trueFalseItems.length > 0) {
+            q.trueFalseItems.forEach((sub) => {
+              docParagraphs.push(
+                new Paragraph({
+                  indent: { left: 320 },
+                  children: [
+                    new TextRun({ text: `${sub.key}) `, bold: true, font: 'Times New Roman', size: 21 }),
+                    new TextRun({ text: cleanLatex(sub.statement), font: 'Times New Roman', size: 21 }),
+                    mode === 'full' ? new TextRun({ text: ` [${sub.isCorrect ? 'ĐÚNG' : 'SAI'}]`, bold: true, color: sub.isCorrect ? '15803D' : 'B91C1C', font: 'Times New Roman', size: 20 }) : new TextRun({ text: '' }),
+                  ],
+                  spacing: { after: 40 },
+                })
+              );
+            });
+          }
+
+          if (mode === 'full' && q.explanation) {
+            docParagraphs.push(
+              new Paragraph({
+                indent: { left: 240 },
+                children: [
+                  new TextRun({ text: `Lời giải & Nhận định: ${cleanLatex(q.explanation)}`, italics: true, font: 'Times New Roman', size: 20, color: '334155' }),
+                ],
+                spacing: { before: 40, after: 100 },
+              })
+            );
+          }
+        });
+      });
+    }
+
+    // -------------------------------------------------------------
+    // PART III: SHORT ANSWER
+    // -------------------------------------------------------------
+    const p3Slots = studyGuide.slots.filter(s => s.part === 'part3');
+    if (p3Slots.length > 0) {
+      docParagraphs.push(
+        new Paragraph({
+          heading: HeadingLevel.HEADING_2,
+          children: [
+            new TextRun({
+              text: `PHẦN III. CÂU HỎI TRẮC NGHIỆM TRẢ LỜI NGẮN (${p3Slots.length} vị trí ma trận × ${mult} = ${p3Slots.length * mult} câu rèn luyện)`,
+              bold: true,
+              font: 'Times New Roman',
+              size: 24,
+              color: '1E40AF'
+            }),
+          ],
+          spacing: { before: 260, after: 80 },
+        })
+      );
+
+      p3Slots.forEach((slot) => {
+        docParagraphs.push(
+          new Paragraph({
+            children: [
+              new TextRun({ 
+                text: `◆ Vị trí Ma trận #${slot.slotNumber} - Chủ đề: ${slot.topic} | Nội dung: ${slot.unit} [Mức độ: ${slot.cognitiveLevel.toUpperCase()}]`, 
+                bold: true, 
+                font: 'Times New Roman', 
+                size: 21,
+                color: '0F172A'
+              }),
+            ],
+            spacing: { before: 180, after: 60 },
+          })
+        );
+        if (slot.learningObjective) {
+          docParagraphs.push(
+            new Paragraph({
+              indent: { left: 240 },
+              children: [
+                new TextRun({ text: '• Yêu cầu cần đạt: ', bold: true, italics: true, font: 'Times New Roman', size: 19, color: '4338CA' }),
+                new TextRun({ text: slot.learningObjective, italics: true, font: 'Times New Roman', size: 19, color: '475569' }),
+              ],
+              spacing: { after: 80 },
+            })
+          );
+        }
+
+        slot.questions.forEach((q, qIndex) => {
+          const qLabel = `Câu ${slot.slotNumber}.${qIndex + 1}`;
+          docParagraphs.push(
+            new Paragraph({
+              children: [
+                new TextRun({ text: `${qLabel}: `, bold: true, font: 'Times New Roman', size: 22 }),
+                new TextRun({ text: cleanLatex(q.content), font: 'Times New Roman', size: 22 }),
+              ],
+              spacing: { before: 100, after: 60 },
+            })
+          );
+
+          if (mode === 'full') {
+            docParagraphs.push(
+              new Paragraph({
+                indent: { left: 240 },
+                children: [
+                  new TextRun({ text: `[Đáp số: ${q.shortAnswerKey || ''}] `, bold: true, color: '15803D', font: 'Times New Roman', size: 20 }),
+                  new TextRun({ text: `Hướng dẫn giải: ${cleanLatex(q.explanation)}`, italics: true, font: 'Times New Roman', size: 20, color: '334155' }),
+                ],
+                spacing: { before: 40, after: 100 },
+              })
+            );
+          }
+        });
+      });
+    }
+
+    // -------------------------------------------------------------
+    // PART IV: ESSAY
+    // -------------------------------------------------------------
+    const p4Slots = studyGuide.slots.filter(s => s.part === 'part4');
+    if (p4Slots.length > 0) {
+      docParagraphs.push(
+        new Paragraph({
+          heading: HeadingLevel.HEADING_2,
+          children: [
+            new TextRun({
+              text: `PHẦN IV. CÂU HỎI TỰ LUẬN (${p4Slots.length} vị trí ma trận × ${mult} = ${p4Slots.length * mult} câu rèn luyện)`,
+              bold: true,
+              font: 'Times New Roman',
+              size: 24,
+              color: '1E40AF'
+            }),
+          ],
+          spacing: { before: 260, after: 80 },
+        })
+      );
+
+      p4Slots.forEach((slot) => {
+        docParagraphs.push(
+          new Paragraph({
+            children: [
+              new TextRun({ 
+                text: `◆ Vị trí Ma trận #${slot.slotNumber} - Chủ đề: ${slot.topic} | Nội dung: ${slot.unit} [Mức độ: ${slot.cognitiveLevel.toUpperCase()}]`, 
+                bold: true, 
+                font: 'Times New Roman', 
+                size: 21,
+                color: '0F172A'
+              }),
+            ],
+            spacing: { before: 180, after: 60 },
+          })
+        );
+        if (slot.learningObjective) {
+          docParagraphs.push(
+            new Paragraph({
+              indent: { left: 240 },
+              children: [
+                new TextRun({ text: '• Yêu cầu cần đạt: ', bold: true, italics: true, font: 'Times New Roman', size: 19, color: '4338CA' }),
+                new TextRun({ text: slot.learningObjective, italics: true, font: 'Times New Roman', size: 19, color: '475569' }),
+              ],
+              spacing: { after: 80 },
+            })
+          );
+        }
+
+        slot.questions.forEach((q, qIndex) => {
+          const qLabel = `Câu ${slot.slotNumber}.${qIndex + 1}`;
+          docParagraphs.push(
+            new Paragraph({
+              children: [
+                new TextRun({ text: `${qLabel}: `, bold: true, font: 'Times New Roman', size: 22 }),
+                new TextRun({ text: cleanLatex(q.content), font: 'Times New Roman', size: 22 }),
+              ],
+              spacing: { before: 100, after: 60 },
+            })
+          );
+
+          if (mode === 'full' && (q.explanation || q.essayRubric)) {
+            docParagraphs.push(
+              new Paragraph({
+                indent: { left: 240 },
+                children: [
+                  new TextRun({ text: 'Hướng dẫn chấm & Đáp án gợi ý:\n', bold: true, font: 'Times New Roman', size: 20, color: '1E3A8A' }),
+                  new TextRun({ text: cleanLatex(q.explanation || q.essayRubric || ''), font: 'Times New Roman', size: 20, color: '334155' }),
+                ],
+                spacing: { before: 40, after: 100 },
+              })
+            );
+          }
+        });
+      });
+    }
+  }
+
+  // If mode === 'full' or 'answers_only', append Comprehensive Answer Key Summary Table
+  if (mode === 'full' || mode === 'answers_only') {
+    docParagraphs.push(
+      new Paragraph({
+        children: [],
+        pageBreakBefore: true,
+      })
+    );
+
+    docParagraphs.push(
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        heading: HeadingLevel.HEADING_2,
+        children: [
+          new TextRun({ 
+            text: 'BẢNG TỔNG HỢP ĐÁP ÁN BỘ ĐỀ CƯƠNG ÔN TẬP', 
+            bold: true, 
+            font: 'Times New Roman', 
+            size: 24, 
+            color: '1E3A8A' 
+          }),
+        ],
+        spacing: { before: 160, after: 120 },
+      })
+    );
+
+    // Summary Table for Part 1 & Part 3
+    const tableKeyRows: TableRow[] = [
+      new TableRow({
+        tableHeader: true,
+        children: [
+          new TableCell({
+            width: { size: 15, type: WidthType.PERCENTAGE },
+            shading: { fill: '1E3A8A' },
+            borders: allBorders,
+            margins: cellMargins,
+            children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'Vị trí ma trận', bold: true, color: 'FFFFFF', font: 'Times New Roman', size: 20 })] })],
+          }),
+          new TableCell({
+            width: { size: 20, type: WidthType.PERCENTAGE },
+            shading: { fill: '1E3A8A' },
+            borders: allBorders,
+            margins: cellMargins,
+            children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'Dạng thức / Mức độ', bold: true, color: 'FFFFFF', font: 'Times New Roman', size: 20 })] })],
+          }),
+          new TableCell({
+            width: { size: 65, type: WidthType.PERCENTAGE },
+            shading: { fill: '1E3A8A' },
+            borders: allBorders,
+            margins: cellMargins,
+            children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: `Đáp án ${mult} câu rèn luyện tương đương`, bold: true, color: 'FFFFFF', font: 'Times New Roman', size: 20 })] })],
+          }),
+        ],
+      }),
+    ];
+
+    studyGuide.slots.forEach((slot) => {
+      let answersFormatted = '';
+      if (slot.part === 'part1') {
+        answersFormatted = slot.questions.map((q, idx) => `Câu ${slot.slotNumber}.${idx + 1}: ${q.correctOption || 'A'}`).join('   |   ');
+      } else if (slot.part === 'part2') {
+        answersFormatted = slot.questions.map((q, idx) => {
+          const tfStr = q.trueFalseItems?.map(i => `${i.key}:${i.isCorrect ? 'Đ' : 'S'}`).join(' ') || '';
+          return `Câu ${slot.slotNumber}.${idx + 1} (${tfStr})`;
+        }).join('   |   ');
+      } else if (slot.part === 'part3') {
+        answersFormatted = slot.questions.map((q, idx) => `Câu ${slot.slotNumber}.${idx + 1}: ${q.shortAnswerKey || ''}`).join('   |   ');
+      } else {
+        answersFormatted = slot.questions.map((_, idx) => `Câu ${slot.slotNumber}.${idx + 1}: Xem biểu điểm chi tiết`).join('   |   ');
+      }
+
+      tableKeyRows.push(
+        new TableRow({
+          children: [
+            new TableCell({
+              borders: allBorders,
+              margins: cellMargins,
+              children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: `Câu ${slot.slotNumber}`, bold: true, font: 'Times New Roman', size: 20 })] })],
+            }),
+            new TableCell({
+              borders: allBorders,
+              margins: cellMargins,
+              children: [
+                new Paragraph({ children: [new TextRun({ text: slot.partName, bold: true, font: 'Times New Roman', size: 19 })] }),
+                new Paragraph({ children: [new TextRun({ text: `[${slot.cognitiveLevel}]`, italics: true, color: '4B5563', font: 'Times New Roman', size: 18 })] }),
+              ],
+            }),
+            new TableCell({
+              borders: allBorders,
+              margins: cellMargins,
+              children: [
+                new Paragraph({ children: [new TextRun({ text: answersFormatted, bold: true, color: '15803D', font: 'Times New Roman', size: 20 })] }),
+              ],
+            }),
+          ],
+        })
+      );
+    });
+
+    const keyTable = new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      alignment: AlignmentType.CENTER,
+      rows: tableKeyRows,
+    });
+
+    docParagraphs.push(keyTable);
+  }
+
+  const doc = new Document({
+    sections: [
+      {
+        properties: {
+          page: {
+            margin: { top: 900, bottom: 900, left: 900, right: 900 },
+          },
+        },
+        children: docParagraphs,
+      },
+    ],
+  });
+
+  const blob = await Packer.toBlob(doc);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  
+  let filePrefix = 'De-cuong-on-tap';
+  if (mode === 'student') filePrefix = 'Phieu-on-tap-hoc-sinh';
+  if (mode === 'answers_only') filePrefix = 'Bang-dap-an-de-cuong';
+
+  const fileName = `${filePrefix}-${header.subject.replace(/\s+/g, '-')}-${header.grade.replace(/\s+/g, '-')}-x${mult}-Cau.docx`;
   a.download = fileName;
   document.body.appendChild(a);
   a.click();

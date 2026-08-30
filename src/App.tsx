@@ -453,6 +453,8 @@ export default function App() {
             onGenerateAiExam={handleGenerateAiExam}
             matrix={project.matrix}
             specification={project.specification}
+            studyGuide={project.studyGuide}
+            onUpdateStudyGuide={(guide) => setProject(prev => ({ ...prev, studyGuide: guide }))}
           />
         )}
 

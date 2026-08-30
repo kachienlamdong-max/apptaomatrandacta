@@ -286,3 +286,300 @@ export const SAMPLE_TOAN_12_PROJECT: ExamProject = (() => {
     notes: 'Đề kiểm tra mẫu chuẩn cấu trúc Bộ GD&ĐT từ kỳ thi 2025.'
   };
 })();
+
+export const SAMPLE_DIA_LI_12_PROJECT: ExamProject = (() => {
+  const baseQuestions = [
+    // Phần I: Trắc nghiệm 4 lựa chọn
+    {
+      id: 'dl_q1',
+      orderNumber: 1,
+      type: 'multiple_choice' as const,
+      topic: 'Địa lí tự nhiên Việt Nam',
+      unit: 'Vị trí địa lí và phạm vi lãnh thổ',
+      cognitiveLevel: 'Nhận biết' as const,
+      content: 'Theo quy định hiện hành và SGK Địa lí 12, vùng lãnh hải của nước ta có chiều rộng là bao nhiêu hải lí tính từ đường cơ sở?',
+      points: 0.25,
+      options: [
+        { key: 'A' as const, content: '12 hải lí.' },
+        { key: 'B' as const, content: '24 hải lí.' },
+        { key: 'C' as const, content: '200 hải lí.' },
+        { key: 'D' as const, content: '350 hải lí.' }
+      ],
+      correctOption: 'A' as const,
+      explanation: 'Lãnh hải của Việt Nam có chiều rộng 12 hải lí tính từ đường cơ sở ra phía biển, là đường biên giới quốc gia trên biển.'
+    },
+    {
+      id: 'dl_q2',
+      orderNumber: 2,
+      type: 'multiple_choice' as const,
+      topic: 'Địa lí tự nhiên Việt Nam',
+      unit: 'Thiên nhiên nhiệt đới ẩm gió mùa',
+      cognitiveLevel: 'Nhận biết' as const,
+      content: 'Mùa đông ở miền Bắc nước ta chịu ảnh hưởng chủ yếu của khối khí lạnh xuất phát từ trung tâm áp cao nào sau đây?',
+      points: 0.25,
+      options: [
+        { key: 'A' as const, content: 'Áp cao Xi-bia.' },
+        { key: 'B' as const, content: 'Áp cao Ha-oai.' },
+        { key: 'C' as const, content: 'Áp cao A-xo.' },
+        { key: 'D' as const, content: 'Áp cao cận chí tuyến Nam bán cầu.' }
+      ],
+      correctOption: 'A' as const,
+      explanation: 'Gió mùa Đông Bắc xuất phát từ khối khí lạnh lục địa ở trung tâm áp cao Xi-bia gây ra mùa đông lạnh ở miền Bắc.'
+    },
+    {
+      id: 'dl_q3',
+      orderNumber: 3,
+      type: 'multiple_choice' as const,
+      topic: 'Địa lí dân cư Việt Nam',
+      unit: 'Dân số và đô thị hoá ở Việt Nam',
+      cognitiveLevel: 'Thông hiểu' as const,
+      content: 'Theo số liệu thống kê năm 2024 trong SGK Địa lí 12, cơ cấu dân số theo độ tuổi của nước ta có đặc điểm nổi bật là:',
+      points: 0.25,
+      options: [
+        { key: 'A' as const, content: 'Đang duy trì thời kì cơ cấu dân số vàng (nhóm 15-64 tuổi chiếm 67,4%) và bước vào giai đoạn già hoá nhanh.' },
+        { key: 'B' as const, content: 'Tỉ lệ trẻ em dưới 15 tuổi chiếm trên 50% tổng dân số cả nước.' },
+        { key: 'C' as const, content: 'Tỉ lệ người già trên 65 tuổi chiếm đa số trong cơ cấu dân số.' },
+        { key: 'D' as const, content: 'Tỉ lệ giới tính khi sinh đạt trạng thái cân bằng tuyệt đối 100 bé gái / 100 bé trai.' }
+      ],
+      correctOption: 'A' as const,
+      explanation: 'Năm 2024: Nhóm dưới 15 tuổi chiếm 23,3%, nhóm 15-64 tuổi chiếm 67,4% (dân số vàng), nhóm trên 65 tuổi chiếm 9,3% (già hoá dân số).'
+    },
+    {
+      id: 'dl_q4',
+      orderNumber: 4,
+      type: 'multiple_choice' as const,
+      topic: 'Địa lí các ngành kinh tế',
+      unit: 'Chuyển dịch cơ cấu kinh tế',
+      cognitiveLevel: 'Thông hiểu' as const,
+      content: 'Trong cơ cấu GDP phân theo ngành kinh tế của nước ta năm 2024, khu vực đóng góp tỉ trọng cao nhất là:',
+      points: 0.25,
+      options: [
+        { key: 'A' as const, content: 'Khu vực Dịch vụ (chiếm 42,4%).' },
+        { key: 'B' as const, content: 'Khu vực Nông nghiệp, lâm nghiệp và thuỷ sản (chiếm 11,9%).' },
+        { key: 'C' as const, content: 'Khu vực Công nghiệp và xây dựng (chiếm 37,6%).' },
+        { key: 'D' as const, content: 'Thuế sản phẩm trừ trợ cấp sản phẩm (chiếm 8,1%).' }
+      ],
+      correctOption: 'A' as const,
+      explanation: 'Năm 2024: Dịch vụ chiếm 42,4% GDP, Công nghiệp - xây dựng chiếm 37,6%, Nông - lâm - thuỷ sản chiếm 11,9%.'
+    },
+
+    // Phần II: Đúng / Sai
+    {
+      id: 'dl_q5',
+      orderNumber: 5,
+      type: 'true_false' as const,
+      topic: 'Địa lí tự nhiên Việt Nam',
+      unit: 'Vị trí địa lí và lãnh thổ Việt Nam',
+      cognitiveLevel: 'Vận dụng' as const,
+      content: 'Cho thông tin sau:\n"Nước ta nằm hoàn toàn trong vùng nội chí tuyến bán cầu Bắc, ở khu vực gió mùa châu Á, tiếp giáp Biển Đông rộng lớn. Vị trí địa lí đã quy định đặc điểm cơ bản của thiên nhiên Việt Nam mang tính chất nhiệt đới ẩm gió mùa, có sự phân hoá sâu sắc theo không gian và thời gian. Lãnh thổ nước ta gồm vùng đất liền, vùng biển và vùng trời với 34 đơn vị hành chính cấp tỉnh."\n(Nguồn: SGK Địa lí 12 - Kết nối tri thức với cuộc sống)\nXét tính đúng/sai của các nhận định:',
+      points: 1.0,
+      trueFalseItems: [
+        { key: 'a' as const, statement: 'Nước ta có nền nhiệt cao, giàu ánh nắng là do nằm trọn vẹn trong vùng nội chí tuyến bán cầu Bắc.', isCorrect: true, explanation: 'Đúng: Vị trí nội chí tuyến mang lại góc nhập xạ lớn quanh năm.' },
+        { key: 'b' as const, statement: 'Tính chất gió mùa của khí hậu Việt Nam bắt nguồn từ vị trí tiếp giáp giữa lục địa Á - Âu và đại dương Thái Bình Dương, Ấn Độ Dương.', isCorrect: true, explanation: 'Đúng: Nằm trong khu vực hoàn lưu gió mùa châu Á.' },
+        { key: 'c' as const, statement: 'Vùng lãnh hải 12 hải lí là vùng biển quốc tế mở tự do cho mọi tàu thuyền khai thác thuỷ sản.', isCorrect: false, explanation: 'Sai: Lãnh hải thuộc chủ quyền hoàn toàn và tuyệt đối của Việt Nam.' },
+        { key: 'd' as const, statement: 'Sự phân hoá thiên nhiên theo chiều Bắc - Nam qua dãy Bạch Mã chủ yếu là do sự suy giảm tác động của gió mùa Đông Bắc về phía Nam.', isCorrect: true, explanation: 'Đúng: Dãy Bạch Mã ngăn gió mùa Đông Bắc tạo ranh giới giữa 2 miền khí hậu.' }
+      ],
+      explanation: 'Phân tích các nhận định đúng sai về vị trí địa lí và lãnh thổ Việt Nam.'
+    },
+    {
+      id: 'dl_q6',
+      orderNumber: 6,
+      type: 'true_false' as const,
+      topic: 'Chuyên đề học tập Địa lí 12',
+      unit: 'Thiên tai và phòng chống thiên tai',
+      cognitiveLevel: 'Vận dụng' as const,
+      content: 'Cho bảng số liệu về Bão và áp thấp nhiệt đới trên Biển Đông giai đoạn 2010 - 2024:\n- Trung bình có 10 - 12 cơn bão/áp thấp nhiệt đới hoạt động trên Biển Đông mỗi năm, trong đó 4 - 6 cơn ảnh hưởng trực tiếp đến đất liền Việt Nam.\n- Mùa bão có xu hướng chậm dần từ Bắc vào Nam.\n(Nguồn: Cục Quản lí đê điều và Phòng, chống thiên tai)\nXét tính đúng/sai của các nhận định:',
+      points: 1.0,
+      trueFalseItems: [
+        { key: 'a' as const, statement: 'Bắc Bộ và Thanh Hoá tập trung bão nhiều nhất vào các tháng 6, 7, 8.', isCorrect: true, explanation: 'Đúng: Mùa bão ở Bắc Bộ diễn ra sớm hơn Trung Bộ và Nam Bộ.' },
+        { key: 'b' as const, statement: 'Tất cả các tỉnh ven biển nước ta đều chịu tần suất bão đổ bộ như nhau vào tháng 12 hàng năm.', isCorrect: false, explanation: 'Sai: Tháng 12 bão chỉ xuất hiện hiếm hoi ở Nam Bộ.' },
+        { key: 'c' as const, statement: 'Bão đổ bộ gây ngập úng ven biển do gió bão kết hợp triều cường nước dâng.', isCorrect: true, explanation: 'Đúng: Nước dâng do bão có thể cao 1,5 - 3m gây ngập lụt nghiêm trọng.' },
+        { key: 'd' as const, statement: 'Trồng rừng ngập mặn chắn sóng và củng cố đê biển là giải pháp công trình sinh thái phòng chống bão hiệu quả.', isCorrect: true, explanation: 'Đúng: Rừng ngập mặn giúp tiêu tán năng lượng sóng bão và bảo vệ bờ kè.' }
+      ],
+      explanation: 'Nhận định a, c, d là ĐÚNG; b là SAI.'
+    },
+
+    // Phần III: Trả lời ngắn
+    {
+      id: 'dl_q7',
+      orderNumber: 7,
+      type: 'short_answer' as const,
+      topic: 'Địa lí dân cư Việt Nam',
+      unit: 'Đô thị hoá ở Việt Nam',
+      cognitiveLevel: 'Thông hiểu' as const,
+      content: 'Năm 2024, tổng dân số nước ta là 101,3 triệu người, trong đó số dân thành thị là 39,0 triệu người. Hãy tính tỉ lệ dân thành thị của nước ta năm 2024 (đơn vị: %, làm tròn kết quả đến một chữ số thập phân). Khi trả lời, chỉ ghi số.',
+      points: 0.5,
+      shortAnswerKey: '38,5',
+      explanation: '$\\text{Tỉ lệ dân thành thị} = \\frac{39,0}{101,3} \\times 100\\% \\approx 38,5\\%$.'
+    },
+    {
+      id: 'dl_q8',
+      orderNumber: 8,
+      type: 'short_answer' as const,
+      topic: 'Địa lí các ngành kinh tế',
+      unit: 'Nông nghiệp Việt Nam',
+      cognitiveLevel: 'Vận dụng' as const,
+      content: 'Năm 2024, diện tích gieo trồng lúa của nước ta là 7 127,1 nghìn ha, tổng sản lượng lúa thu hoạch đạt 43,5 triệu tấn (43 500 nghìn tấn). Hãy tính năng suất lúa bình quân cả nước năm 2024 (đơn vị: tạ/ha, làm tròn kết quả đến một chữ số thập phân). Khi trả lời, chỉ ghi số.',
+      points: 0.5,
+      shortAnswerKey: '61,0',
+      explanation: 'Đổi 43,5 triệu tấn = 435 000 nghìn tạ. $\\text{Năng suất} = \\frac{435000}{7127,1} \\approx 61,03 \\approx 61,0\\text{ tạ/ha}$.'
+    },
+
+    // Phần IV: Tự luận
+    {
+      id: 'dl_q9',
+      orderNumber: 9,
+      type: 'essay' as const,
+      topic: 'Địa lí tự nhiên Việt Nam',
+      unit: 'Thiên nhiên nhiệt đới ẩm gió mùa',
+      cognitiveLevel: 'Vận dụng cao' as const,
+      content: 'Dựa vào kiến thức Địa lí 12:\na) Trình bày các đặc điểm biểu hiện của thiên nhiên nhiệt đới ẩm gió mùa qua thành phần sông ngòi ở nước ta.\nb) Vì sao thiên nhiên nước ta mang tính chất nhiệt đới ẩm gió mùa mà không bị khô hạn như các khu vực khác cùng vĩ độ ở Tây Á và Bắc Phi?',
+      points: 2.0,
+      essayRubric: 'Ý a (1.25đ): \n- Mạng lưới sông ngòi dày đặc: có 2 360 con sông dài trên 10 km (0.25đ).\n- Nhiều nước và giàu phù sa: tổng lượng dòng chảy đạt 839 tỉ m³/năm, lượng phù sa bồi đắp khoảng 200 triệu tấn/năm (0.5đ).\n- Chế độ nước theo mùa: mùa lũ tương ứng mùa mưa, mùa cạn tương ứng mùa khô (0.5đ).\nÝ b (0.75đ): \n- Do nước ta tiếp giáp Biển Đông rộng lớn (1 triệu km²), nguồn ẩm dồi dào từ biển kết hợp hoàn lưu gió mùa mang lại lượng mưa lớn (1 500 - 2 000 mm/năm), xoá tan tính chất khô hạn của vùng vĩ độ cận nhiệt.',
+      explanation: 'Phân tích sông ngòi nhiệt đới ẩm và vai trò điều hoà độ ẩm của Biển Đông.'
+    }
+  ];
+
+  return {
+    id: 'sample-dia-li-12',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    header: {
+      provinceOrDept: 'SỞ GIÁO DỤC VÀ ĐÀO TẠO',
+      schoolName: 'TRƯỜNG THPT CHU VĂN AN',
+      examTitle: 'ĐỀ KIỂM TRA ĐỊNH KỲ ĐỊA LÍ 12 (CHUẨN BỘ GD&ĐT 2025)',
+      subject: 'Địa lí',
+      grade: 'Lớp 12',
+      curriculum: 'Kết nối tri thức với cuộc sống',
+      academicYear: '2024 - 2025',
+      timeDuration: 50,
+      structureOption: 'option_1',
+      teacherName: 'Tổ Địa lí - Lịch sử',
+      partConfigs: DEFAULT_PART_CONFIGS,
+    },
+    matrix: [
+      {
+        id: 'dl_m1',
+        topic: 'Địa lí tự nhiên Việt Nam',
+        unit: 'Vị trí địa lí, lãnh thổ và thiên nhiên nhiệt đới ẩm gió mùa',
+        part1_nb: 2,
+        part1_th: 0,
+        part1_vd: 0,
+        part1_vdc: 0,
+        part2_nb: 0,
+        part2_th: 0,
+        part2_vd: 1,
+        part2_vdc: 0,
+        part3_nb: 0,
+        part3_th: 0,
+        part3_vd: 0,
+        part3_vdc: 0,
+        part4_nb: 0,
+        part4_th: 0,
+        part4_vd: 0,
+        part4_vdc: 1,
+        totalPoints: 3.5,
+      },
+      {
+        id: 'dl_m2',
+        topic: 'Địa lí dân cư và các ngành kinh tế',
+        unit: 'Dân số, lao động, đô thị hoá và chuyển dịch cơ cấu kinh tế',
+        part1_nb: 0,
+        part1_th: 2,
+        part1_vd: 0,
+        part1_vdc: 0,
+        part2_nb: 0,
+        part2_th: 0,
+        part2_vd: 0,
+        part2_vdc: 0,
+        part3_nb: 0,
+        part3_th: 1,
+        part3_vd: 1,
+        part3_vdc: 0,
+        part4_nb: 0,
+        part4_th: 0,
+        part4_vd: 0,
+        part4_vdc: 0,
+        totalPoints: 1.5,
+      },
+      {
+        id: 'dl_m3',
+        topic: 'Chuyên đề học tập Địa lí 12',
+        unit: 'Thiên tai và các biện pháp phòng chống thiên tai',
+        part1_nb: 0,
+        part1_th: 0,
+        part1_vd: 0,
+        part1_vdc: 0,
+        part2_nb: 0,
+        part2_th: 0,
+        part2_vd: 1,
+        part2_vdc: 0,
+        part3_nb: 0,
+        part3_th: 0,
+        part3_vd: 0,
+        part3_vdc: 0,
+        part4_nb: 0,
+        part4_th: 0,
+        part4_vd: 0,
+        part4_vdc: 0,
+        totalPoints: 1.0,
+      }
+    ],
+    specification: [
+      {
+        id: 'dl_sp1',
+        topic: 'Địa lí tự nhiên Việt Nam',
+        unit: 'Vị trí địa lí, lãnh thổ và thiên nhiên nhiệt đới ẩm gió mùa',
+        learningObjectives: {
+          nb: 'Nhận biết phạm vi lãnh thổ, vùng biển 12 hải lí và đặc điểm gió mùa ở nước ta.',
+          th: 'Phân tích được tác động của Biển Đông đến tính chất nhiệt đới ẩm gió mùa.',
+          vd: 'Vận dụng kiến thức giải thích sự phân hoá thiên nhiên Bắc - Nam và Đông - Tây.',
+          vdc: 'Đánh giá ảnh hưởng tổng hợp của thiên nhiên nhiệt đới ẩm đến phát triển kinh tế.'
+        },
+        questionCount: {
+          part1: { nb: 2, th: 0, vd: 0, vdc: 0 },
+          part2: { nb: 0, th: 0, vd: 1, vdc: 0 },
+          part3: { nb: 0, th: 0, vd: 0, vdc: 0 },
+          part4: { nb: 0, th: 0, vd: 0, vdc: 1 },
+        }
+      },
+      {
+        id: 'dl_sp2',
+        topic: 'Địa lí dân cư và các ngành kinh tế',
+        unit: 'Dân số, lao động, đô thị hoá và chuyển dịch cơ cấu kinh tế',
+        learningObjectives: {
+          nb: 'Nhận biết các chỉ số về dân số vàng, cơ cấu GDP năm 2024.',
+          th: 'Tính toán được tỉ lệ dân thành thị và năng suất lúa bình quân cả nước.',
+          vd: 'Phân tích được chuyển dịch cơ cấu kinh tế theo ngành và theo thành phần.',
+          vdc: 'Đề xuất giải pháp việc làm và nâng cao chất lượng nguồn nhân lực.'
+        },
+        questionCount: {
+          part1: { nb: 0, th: 2, vd: 0, vdc: 0 },
+          part2: { nb: 0, th: 0, vd: 0, vdc: 0 },
+          part3: { nb: 0, th: 1, vd: 1, vdc: 0 },
+          part4: { nb: 0, th: 0, vd: 0, vdc: 0 },
+        }
+      },
+      {
+        id: 'dl_sp3',
+        topic: 'Chuyên đề học tập Địa lí 12',
+        unit: 'Thiên tai và các biện pháp phòng chống thiên tai',
+        learningObjectives: {
+          nb: 'Nhận biết các loại thiên tai thường gặp ở nước ta.',
+          th: 'Hiểu được quy luật di chuyển của mùa bão và nguy cơ xâm nhập mặn.',
+          vd: 'Đánh giá hậu quả của bão lũ và đề xuất các giải pháp công trình, phi công trình phòng chống thiên tai.',
+          vdc: 'Xây dựng kế hoạch hành động thích ứng với biến đổi khí hậu tại địa phương.'
+        },
+        questionCount: {
+          part1: { nb: 0, th: 0, vd: 0, vdc: 0 },
+          part2: { nb: 0, th: 0, vd: 1, vdc: 0 },
+          part3: { nb: 0, th: 0, vd: 0, vdc: 0 },
+          part4: { nb: 0, th: 0, vd: 0, vdc: 0 },
+        }
+      }
+    ],
+    sampleExamQuestions: balanceMultipleChoiceQuestions(baseQuestions, 101),
+    shuffledVariants: generateShuffledExamVariants(balanceMultipleChoiceQuestions(baseQuestions, 101)),
+    notes: 'Đề kiểm tra mẫu Địa lí 12 chuẩn theo SGK và Chuyên đề Kết nối tri thức với cuộc sống (cập nhật số liệu 2024-2025).'
+  };
+})();

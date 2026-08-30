@@ -14,17 +14,20 @@ import {
   FileSpreadsheet,
   Files,
   ShieldCheck,
-  FileCheck
+  FileCheck,
+  GraduationCap
 } from 'lucide-react';
-import { ExamProject } from '../../types';
+import { ExamProject, StudyGuideData } from '../../types';
 import { 
   exportFullExamToDocx, 
   exportAllVariantsOnlyToDocx, 
   exportSingleVariantToDocx,
   exportMatrixAndSpecToDocx,
-  exportComplianceReportToDocx
+  exportComplianceReportToDocx,
+  exportStudyGuideToDocx
 } from '../../utils/docxExport';
 import { generateShuffledExamVariants } from '../../utils/shuffler';
+import { generateStudyGuideFromMatrixAndSpec } from '../../utils/questionGenerator';
 
 interface ExportStepProps {
   project: ExamProject;
@@ -39,12 +42,39 @@ export const ExportStep: React.FC<ExportStepProps> = ({
 }) => {
   const [downloading, setDownloading] = useState(false);
   const [downloadingVariant, setDownloadingVariant] = useState<string | null>(null);
+  const [downloadingStudyGuide, setDownloadingStudyGuide] = useState<'full' | 'student' | 'answers' | null>(null);
   const [copiedText, setCopiedText] = useState(false);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
 
   const activeVariants = (project.shuffledVariants && project.shuffledVariants.length > 0)
     ? project.shuffledVariants
     : generateShuffledExamVariants(project.sampleExamQuestions, 4, 101);
+
+  const getOrGenerateStudyGuide = (): StudyGuideData => {
+    if (project.studyGuide && project.studyGuide.slots.length > 0) {
+      return project.studyGuide;
+    }
+    return generateStudyGuideFromMatrixAndSpec(
+      project.header,
+      project.matrix,
+      project.specification,
+      4
+    );
+  };
+
+  const handleExportStudyGuide = async (mode: 'full' | 'student' | 'answers_only') => {
+    setDownloadingStudyGuide(mode === 'answers_only' ? 'answers' : mode);
+    try {
+      const guide = getOrGenerateStudyGuide();
+      await exportStudyGuideToDocx(project, guide, { mode });
+      setDownloadSuccess(true);
+      setTimeout(() => setDownloadSuccess(false), 3000);
+    } catch (err) {
+      console.error('Error exporting study guide:', err);
+    } finally {
+      setDownloadingStudyGuide(null);
+    }
+  };
 
   const handleExportFullDocx = async () => {
     setDownloading(true);
@@ -270,7 +300,67 @@ export const ExportStep: React.FC<ExportStepProps> = ({
           </button>
         </div>
 
-        {/* Option 5: Compliance Audit Checklist DOCX */}
+        {/* Option 5: Study Guide (x4 Question Bank) Card */}
+        <div className="bg-gradient-to-r from-indigo-900 via-blue-900 to-slate-900 p-6 rounded-2xl border border-indigo-700 shadow-md space-y-4 flex flex-col justify-between hover:border-indigo-400 transition-all md:col-span-2 lg:col-span-4 text-white">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-amber-400 text-slate-900 flex items-center justify-center font-bold shrink-0 shadow-md">
+                <Sparkles className="w-6 h-6" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="font-bold text-sm text-white flex items-center gap-2">
+                  <span>Bộ Đề Cương Ôn Tập & Ngân Hàng Câu Hỏi Rèn Luyện (Nhân 4 Câu Theo Ma Trận)</span>
+                  <span className="text-[10px] font-bold text-slate-900 bg-amber-300 px-2 py-0.5 rounded-full uppercase">Mới & Đột Phá</span>
+                </h3>
+                <p className="text-xs text-slate-300 leading-relaxed max-w-3xl">
+                  Tải riêng bộ tài liệu đề cương gồm <strong>{getOrGenerateStudyGuide().totalQuestions} câu hỏi tương đương</strong> được nhân bản từ từng vị trí ma trận/đặc tả gốc (bảo toàn 100% dạng thức và mức độ nhận thức). Tùy chọn tải bản đầy đủ kèm lời giải, bản phiếu làm bài học sinh hoặc bảng đáp án.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              <button
+                id="btn-download-study-guide-full"
+                onClick={() => handleExportStudyGuide('full')}
+                disabled={downloadingStudyGuide !== null}
+                className="inline-flex items-center gap-2 py-2.5 px-4 bg-amber-400 hover:bg-amber-300 text-slate-900 rounded-xl font-bold text-xs transition-all shadow-sm"
+              >
+                {downloadingStudyGuide === 'full' ? (
+                  <Sparkles className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Download className="w-4 h-4" />
+                )}
+                <span>Tải Đề Cương Kèm Lời Giải (.docx)</span>
+              </button>
+
+              <button
+                id="btn-download-study-guide-student"
+                onClick={() => handleExportStudyGuide('student')}
+                disabled={downloadingStudyGuide !== null}
+                className="inline-flex items-center gap-2 py-2.5 px-4 bg-white/15 hover:bg-white/25 text-white border border-white/20 rounded-xl font-semibold text-xs transition-all"
+              >
+                {downloadingStudyGuide === 'student' ? (
+                  <Sparkles className="w-4 h-4 animate-spin" />
+                ) : (
+                  <GraduationCap className="w-4 h-4 text-indigo-300" />
+                )}
+                <span>Phiếu Học Sinh (Không Đáp Án)</span>
+              </button>
+
+              <button
+                id="btn-download-study-guide-answers"
+                onClick={() => handleExportStudyGuide('answers_only')}
+                disabled={downloadingStudyGuide !== null}
+                className="inline-flex items-center gap-2 py-2.5 px-3 bg-white/10 hover:bg-white/20 text-slate-200 border border-white/10 rounded-xl font-medium text-xs transition-all"
+              >
+                <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+                <span>Bảng Đáp Án</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Option 6: Compliance Audit Checklist DOCX */}
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4 flex flex-col justify-between hover:border-emerald-300 transition-all md:col-span-2 lg:col-span-4">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-4">
