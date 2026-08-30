@@ -60,6 +60,118 @@ function cleanLatex(str: string): string {
     .replace(/\\text\{([^}]+)\}/g, '$1');
 }
 
+/**
+ * Standard National Exam Layout for Multiple-Choice Options:
+ * - If 4 options and short (<= 38 chars): 2 columns (A, B on row 1; C, D on row 2) in borderless table.
+ * - Otherwise: standard 1 option per line.
+ */
+function createDocxMCOptionsElements(options?: { key: string; content: string }[], fontSize: number = 22): (Paragraph | Table)[] {
+  if (!options || options.length === 0) return [];
+  
+  const maxLen = Math.max(...options.map(o => (o.content || '').length));
+  
+  if (options.length === 4 && maxLen <= 38) {
+    const optA = options[0];
+    const optB = options[1];
+    const optC = options[2];
+    const optD = options[3];
+
+    const borderNone = { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' };
+    const bordersNone = {
+      top: borderNone,
+      bottom: borderNone,
+      left: borderNone,
+      right: borderNone,
+      insideHorizontal: borderNone,
+      insideVertical: borderNone,
+    };
+
+    return [
+      new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        borders: bordersNone,
+        rows: [
+          new TableRow({
+            children: [
+              new TableCell({
+                width: { size: 50, type: WidthType.PERCENTAGE },
+                borders: bordersNone,
+                margins: { top: 20, bottom: 20, left: 360, right: 60 },
+                children: [
+                  new Paragraph({
+                    children: [
+                      new TextRun({ text: `${optA.key}. `, bold: true, font: 'Times New Roman', size: fontSize }),
+                      new TextRun({ text: cleanLatex(optA.content), font: 'Times New Roman', size: fontSize }),
+                    ],
+                    spacing: { after: 20 },
+                  }),
+                ],
+              }),
+              new TableCell({
+                width: { size: 50, type: WidthType.PERCENTAGE },
+                borders: bordersNone,
+                margins: { top: 20, bottom: 20, left: 120, right: 60 },
+                children: [
+                  new Paragraph({
+                    children: [
+                      new TextRun({ text: `${optB.key}. `, bold: true, font: 'Times New Roman', size: fontSize }),
+                      new TextRun({ text: cleanLatex(optB.content), font: 'Times New Roman', size: fontSize }),
+                    ],
+                    spacing: { after: 20 },
+                  }),
+                ],
+              }),
+            ],
+          }),
+          new TableRow({
+            children: [
+              new TableCell({
+                width: { size: 50, type: WidthType.PERCENTAGE },
+                borders: bordersNone,
+                margins: { top: 20, bottom: 20, left: 360, right: 60 },
+                children: [
+                  new Paragraph({
+                    children: [
+                      new TextRun({ text: `${optC.key}. `, bold: true, font: 'Times New Roman', size: fontSize }),
+                      new TextRun({ text: cleanLatex(optC.content), font: 'Times New Roman', size: fontSize }),
+                    ],
+                    spacing: { after: 20 },
+                  }),
+                ],
+              }),
+              new TableCell({
+                width: { size: 50, type: WidthType.PERCENTAGE },
+                borders: bordersNone,
+                margins: { top: 20, bottom: 20, left: 120, right: 60 },
+                children: [
+                  new Paragraph({
+                    children: [
+                      new TextRun({ text: `${optD.key}. `, bold: true, font: 'Times New Roman', size: fontSize }),
+                      new TextRun({ text: cleanLatex(optD.content), font: 'Times New Roman', size: fontSize }),
+                    ],
+                    spacing: { after: 20 },
+                  }),
+                ],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ];
+  }
+
+  return options.map(opt =>
+    new Paragraph({
+      indent: { left: 360 },
+      children: [
+        new TextRun({ text: `${opt.key}. `, bold: true, font: 'Times New Roman', size: fontSize }),
+        new TextRun({ text: cleanLatex(opt.content), font: 'Times New Roman', size: fontSize }),
+      ],
+      spacing: { after: 40 },
+    })
+  );
+}
+
 // Generate the official Ministry/School Header Table for a given Exam Code
 function createOfficialHeaderTable(header: ExamHeaderConfig, examCode: string): Table {
   return new Table({
@@ -260,19 +372,9 @@ function generateVariantParagraphs(
         })
       );
 
-      if (q.options) {
-        q.options.forEach(opt => {
-          paragraphs.push(
-            new Paragraph({
-              indent: { left: 360 },
-              children: [
-                new TextRun({ text: `${opt.key}. `, bold: true, font: 'Times New Roman', size: 22 }),
-                new TextRun({ text: cleanLatex(opt.content), font: 'Times New Roman', size: 22 }),
-              ],
-              spacing: { after: 40 },
-            })
-          );
-        });
+      if (q.options && q.options.length > 0) {
+        const optionElements = createDocxMCOptionsElements(q.options, 22);
+        optionElements.forEach(el => paragraphs.push(el as any));
       }
     });
   }
@@ -1127,14 +1229,14 @@ export function generateMatrixDocxElements(header: ExamHeaderConfig, matrix: Mat
       tableHeader: true,
       children: [
         new TableCell({
-          rowSpan: 2,
+          rowSpan: 3,
           borders: allBorders,
           margins: cellMargins,
           verticalAlign: VerticalAlign.CENTER,
           children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'STT', bold: true, font: 'Times New Roman', size: 18 })] })],
         }),
         new TableCell({
-          rowSpan: 2,
+          rowSpan: 3,
           borders: allBorders,
           margins: cellMargins,
           verticalAlign: VerticalAlign.CENTER,
@@ -1148,14 +1250,14 @@ export function generateMatrixDocxElements(header: ExamHeaderConfig, matrix: Mat
           children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'Mức độ nhận thức', bold: true, font: 'Times New Roman', size: 18 })] })],
         }),
         new TableCell({
-          rowSpan: 2,
+          rowSpan: 3,
           borders: allBorders,
           margins: cellMargins,
           verticalAlign: VerticalAlign.CENTER,
           children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'Tổng\nđiểm', bold: true, font: 'Times New Roman', size: 18 })] })],
         }),
         new TableCell({
-          rowSpan: 2,
+          rowSpan: 3,
           borders: allBorders,
           margins: cellMargins,
           verticalAlign: VerticalAlign.CENTER,
@@ -1619,10 +1721,22 @@ export function generateSpecificationDocxElements(
       tableHeader: true,
       children: [
         new TableCell({
-          columnSpan: 9,
+          columnSpan: 3,
           borders: allBorders,
           margins: cellMargins,
-          children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'TRẮC NGHIỆM KHÁCH QUAN', bold: true, font: 'Times New Roman', size: 18 })] })],
+          children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'TRẮC NGHIỆM NHIỀU LỰA CHỌN', bold: true, font: 'Times New Roman', size: 18 })] })],
+        }),
+        new TableCell({
+          columnSpan: 3,
+          borders: allBorders,
+          margins: cellMargins,
+          children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'TRẮC NGHIỆM ĐÚNG/SAI', bold: true, font: 'Times New Roman', size: 18 })] })],
+        }),
+        new TableCell({
+          columnSpan: 3,
+          borders: allBorders,
+          margins: cellMargins,
+          children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'TRẢ LỜI NGẮN', bold: true, font: 'Times New Roman', size: 18 })] })],
         }),
         new TableCell({
           columnSpan: 3,
@@ -1635,42 +1749,9 @@ export function generateSpecificationDocxElements(
   );
 
   // Header Row 3:
-  specRows.push(
-    new TableRow({
-      tableHeader: true,
-      children: [
-        new TableCell({
-          columnSpan: 3,
-          borders: allBorders,
-          margins: cellMargins,
-          children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'Nhiều lựa chọn', bold: true, font: 'Times New Roman', size: 18 })] })],
-        }),
-        new TableCell({
-          columnSpan: 3,
-          borders: allBorders,
-          margins: cellMargins,
-          children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'Đúng/ sai', bold: true, font: 'Times New Roman', size: 18 })] })],
-        }),
-        new TableCell({
-          columnSpan: 3,
-          borders: allBorders,
-          margins: cellMargins,
-          children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'Trả lời ngắn', bold: true, font: 'Times New Roman', size: 18 })] })],
-        }),
-        new TableCell({
-          columnSpan: 3,
-          borders: allBorders,
-          margins: cellMargins,
-          children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: '', font: 'Times New Roman', size: 18 })] })],
-        }),
-      ],
-    })
-  );
-
-  // Header Row 4:
-  const row4Cells: TableCell[] = [];
+  const row3Cells: TableCell[] = [];
   for (let i = 0; i < 4; i++) {
-    row4Cells.push(
+    row3Cells.push(
       new TableCell({
         borders: allBorders,
         margins: cellMargins,
@@ -1688,7 +1769,7 @@ export function generateSpecificationDocxElements(
       })
     );
   }
-  specRows.push(new TableRow({ tableHeader: true, children: row4Cells }));
+  specRows.push(new TableRow({ tableHeader: true, children: row3Cells }));
 
   // Helper for count cell
   const createCountCell = (cnt: number) => {
@@ -1709,24 +1790,26 @@ export function generateSpecificationDocxElements(
   let sum_p3_nb = 0, sum_p3_th = 0, sum_p3_vd = 0;
   let sum_p4_nb = 0, sum_p4_th = 0, sum_p4_vd = 0;
 
-  effectiveSpecs.forEach((spec, idx) => {
-    const matchingMatrixRow = matrix.find(m => m.topic === spec.topic && m.unit === spec.unit) || matrix[idx];
+  matrix.forEach((row, idx) => {
+    const spec = (specification && specification.length > 0)
+      ? (specification.find(s => s.id === row.id || (s.topic === row.topic && s.unit === row.unit)) || specification[idx])
+      : null;
 
-    const p1_nb = spec.questionCount?.part1?.nb ?? matchingMatrixRow?.part1_nb ?? 0;
-    const p1_th = spec.questionCount?.part1?.th ?? matchingMatrixRow?.part1_th ?? 0;
-    const p1_vd = (spec.questionCount?.part1?.vd ?? matchingMatrixRow?.part1_vd ?? 0) + (spec.questionCount?.part1?.vdc ?? matchingMatrixRow?.part1_vdc ?? 0);
+    const p1_nb = row.part1_nb || 0;
+    const p1_th = row.part1_th || 0;
+    const p1_vd = (row.part1_vd || 0) + (row.part1_vdc || 0);
 
-    const p2_nb = spec.questionCount?.part2?.nb ?? matchingMatrixRow?.part2_nb ?? 0;
-    const p2_th = spec.questionCount?.part2?.th ?? matchingMatrixRow?.part2_th ?? 0;
-    const p2_vd = (spec.questionCount?.part2?.vd ?? matchingMatrixRow?.part2_vd ?? 0) + (spec.questionCount?.part2?.vdc ?? matchingMatrixRow?.part2_vdc ?? 0);
+    const p2_nb = row.part2_nb || 0;
+    const p2_th = row.part2_th || 0;
+    const p2_vd = (row.part2_vd || 0) + (row.part2_vdc || 0);
 
-    const p3_nb = spec.questionCount?.part3?.nb ?? matchingMatrixRow?.part3_nb ?? 0;
-    const p3_th = spec.questionCount?.part3?.th ?? matchingMatrixRow?.part3_th ?? 0;
-    const p3_vd = (spec.questionCount?.part3?.vd ?? matchingMatrixRow?.part3_vd ?? 0) + (spec.questionCount?.part3?.vdc ?? matchingMatrixRow?.part3_vdc ?? 0);
+    const p3_nb = row.part3_nb || 0;
+    const p3_th = row.part3_th || 0;
+    const p3_vd = (row.part3_vd || 0) + (row.part3_vdc || 0);
 
-    const p4_nb = spec.questionCount?.part4?.nb ?? matchingMatrixRow?.part4_nb ?? 0;
-    const p4_th = spec.questionCount?.part4?.th ?? matchingMatrixRow?.part4_th ?? 0;
-    const p4_vd = (spec.questionCount?.part4?.vd ?? matchingMatrixRow?.part4_vd ?? 0) + (spec.questionCount?.part4?.vdc ?? matchingMatrixRow?.part4_vdc ?? 0);
+    const p4_nb = row.part4_nb || 0;
+    const p4_th = row.part4_th || 0;
+    const p4_vd = (row.part4_vd || 0) + (row.part4_vdc || 0);
 
     sum_p1_nb += p1_nb;
     sum_p1_th += p1_th;
@@ -1744,31 +1827,38 @@ export function generateSpecificationDocxElements(
     sum_p4_th += p4_th;
     sum_p4_vd += p4_vd;
 
+    const totalNb = p1_nb + p2_nb + p3_nb + p4_nb;
+    const totalTh = p1_th + p2_th + p3_th + p4_th;
+    const totalVd = p1_vd + p2_vd + p3_vd + p4_vd;
+
     const objParas: Paragraph[] = [];
-    if (spec.learningObjectives?.nb) {
+    if (spec?.learningObjectives?.nb || totalNb > 0) {
+      const text = spec?.learningObjectives?.nb || `Nhận biết và nêu được các kiến thức cơ bản về ${row.unit || row.topic}.`;
       objParas.push(
         new Paragraph({
           children: [
             new TextRun({ text: 'Nhận biết: ', bold: true, font: 'Times New Roman', size: 18 }),
-            new TextRun({ text: spec.learningObjectives.nb, font: 'Times New Roman', size: 18 }),
+            new TextRun({ text, font: 'Times New Roman', size: 18 }),
           ],
           spacing: { after: 40 },
         })
       );
     }
-    if (spec.learningObjectives?.th) {
+    if (spec?.learningObjectives?.th || totalTh > 0) {
+      const text = spec?.learningObjectives?.th || `Hiểu và giải thích được các nội dung cốt lõi của ${row.unit || row.topic}.`;
       objParas.push(
         new Paragraph({
           children: [
             new TextRun({ text: 'Thông hiểu: ', bold: true, font: 'Times New Roman', size: 18 }),
-            new TextRun({ text: spec.learningObjectives.th, font: 'Times New Roman', size: 18 }),
+            new TextRun({ text, font: 'Times New Roman', size: 18 }),
           ],
           spacing: { after: 40 },
         })
       );
     }
-    if (spec.learningObjectives?.vd || spec.learningObjectives?.vdc) {
-      const vdText = [spec.learningObjectives.vd, spec.learningObjectives.vdc].filter(Boolean).join(' ');
+    if (spec?.learningObjectives?.vd || spec?.learningObjectives?.vdc || totalVd > 0) {
+      const vdText = [spec?.learningObjectives?.vd, spec?.learningObjectives?.vdc].filter(Boolean).join(' ') ||
+        `Vận dụng kiến thức ${row.unit || row.topic} để giải quyết bài tập và tình huống thực tiễn.`;
       objParas.push(
         new Paragraph({
           children: [
@@ -1795,12 +1885,12 @@ export function generateSpecificationDocxElements(
           new TableCell({
             borders: allBorders,
             margins: cellMargins,
-            children: [new Paragraph({ children: [new TextRun({ text: spec.topic || `Chủ đề ${idx + 1}`, bold: true, font: 'Times New Roman', size: 18 })] })],
+            children: [new Paragraph({ children: [new TextRun({ text: row.topic || `Chủ đề ${idx + 1}`, bold: true, font: 'Times New Roman', size: 18 })] })],
           }),
           new TableCell({
             borders: allBorders,
             margins: cellMargins,
-            children: [new Paragraph({ children: [new TextRun({ text: spec.unit || '', font: 'Times New Roman', size: 18 })] })],
+            children: [new Paragraph({ children: [new TextRun({ text: row.unit || '', font: 'Times New Roman', size: 18 })] })],
           }),
           new TableCell({
             borders: allBorders,
@@ -2455,32 +2545,8 @@ export async function exportStudyGuideToDocx(
           );
 
           if (q.options && q.options.length > 0) {
-            const optCells = q.options.map((opt) => {
-              return new TableCell({
-                width: { size: 25, type: WidthType.PERCENTAGE },
-                borders: {
-                  top: { style: BorderStyle.NONE },
-                  bottom: { style: BorderStyle.NONE },
-                  left: { style: BorderStyle.NONE },
-                  right: { style: BorderStyle.NONE },
-                },
-                children: [
-                  new Paragraph({
-                    children: [
-                      new TextRun({ text: `${opt.key}. `, bold: true, font: 'Times New Roman', size: 21 }),
-                      new TextRun({ text: cleanLatex(opt.content), font: 'Times New Roman', size: 21 }),
-                    ],
-                  }),
-                ],
-              });
-            });
-
-            docParagraphs.push(
-              new Table({
-                width: { size: 100, type: WidthType.PERCENTAGE },
-                rows: [new TableRow({ children: optCells })],
-              })
-            );
+            const optionElements = createDocxMCOptionsElements(q.options, 21);
+            optionElements.forEach(el => docParagraphs.push(el as any));
           }
 
           if (mode === 'full' && q.explanation) {

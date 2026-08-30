@@ -446,24 +446,26 @@ export const ExamPreviewStep: React.FC<ExamPreviewStepProps> = ({
                           </div>
                         </div>
 
-                        {/* Options */}
+                        {/* Options - National Exam Format (A, B on row 1; C, D on row 2) */}
                         {q.options && (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-xs pt-1">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 text-xs pt-1 font-serif">
                             {q.options.map(opt => (
                               <div
                                 key={opt.key}
-                                className={`p-2 rounded-lg border font-serif flex items-center gap-2 ${
+                                className={`flex items-start gap-2 py-0.5 ${
                                   opt.key === q.correctOption
-                                    ? 'bg-emerald-50 border-emerald-300 font-bold text-emerald-950'
-                                    : 'bg-white border-slate-200 text-slate-700'
+                                    ? 'text-emerald-900 font-bold'
+                                    : 'text-slate-800'
                                 }`}
                               >
-                                <span className={`font-bold w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${
-                                  opt.key === q.correctOption ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600'
+                                <span className={`font-bold shrink-0 ${
+                                  opt.key === q.correctOption ? 'text-emerald-700 underline' : 'text-slate-900'
                                 }`}>
-                                  {opt.key}
+                                  {opt.key}.
                                 </span>
-                                <MathRenderer content={opt.content} />
+                                <div className="flex-1">
+                                  <MathRenderer content={opt.content} />
+                                </div>
                               </div>
                             ))}
                           </div>

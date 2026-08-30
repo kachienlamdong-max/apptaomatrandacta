@@ -1,6 +1,7 @@
 import { MultipleChoiceOption, TrueFalseSubItem } from '../../types';
 
 export interface RawMCQ {
+  grade?: '10' | '11' | '12' | string;
   topicKeywords?: string[];
   level: 'Nhận biết' | 'Thông hiểu' | 'Vận dụng' | 'Vận dụng cao';
   content: string;
@@ -10,6 +11,7 @@ export interface RawMCQ {
 }
 
 export interface RawTF {
+  grade?: '10' | '11' | '12' | string;
   topicKeywords?: string[];
   level: 'Nhận biết' | 'Thông hiểu' | 'Vận dụng' | 'Vận dụng cao';
   content: string;
@@ -18,6 +20,7 @@ export interface RawTF {
 }
 
 export interface RawShort {
+  grade?: '10' | '11' | '12' | string;
   topicKeywords?: string[];
   level: 'Nhận biết' | 'Thông hiểu' | 'Vận dụng' | 'Vận dụng cao';
   content: string;
@@ -26,6 +29,7 @@ export interface RawShort {
 }
 
 export interface RawEssay {
+  grade?: '10' | '11' | '12' | string;
   topicKeywords?: string[];
   level: 'Nhận biết' | 'Thông hiểu' | 'Vận dụng' | 'Vận dụng cao';
   content: string;

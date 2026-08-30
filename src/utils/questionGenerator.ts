@@ -492,8 +492,14 @@ export function generateStudyGuideFromMatrixAndSpec(
 }
 
 // -------------------------------------------------------------
-// SELECTION HELPERS THAT STRICTLY ENFORCE UNIQUENESS
+// SELECTION HELPERS THAT STRICTLY ENFORCE UNIQUENESS & GRADE SCOPE
 // -------------------------------------------------------------
+
+export function extractGradeNumber(gradeStr?: string): string {
+  if (!gradeStr) return '';
+  const match = gradeStr.match(/\b(10|11|12|6|7|8|9)\b/);
+  return match ? match[1] : '';
+}
 
 interface SelectionContext {
   subjectKey: string;
@@ -514,14 +520,27 @@ function getUniqueMCQuestion(ctx: SelectionContext): ExamQuestion {
   const bank = getQuestionBankForSubject(ctx.subjectKey);
   const id = `q-mc-${ctx.orderNumber}-${Math.random().toString(36).substring(2, 6)}`;
   const tKeywords = (ctx.topic + ' ' + ctx.unit).toLowerCase();
+  const targetGrade = extractGradeNumber(ctx.grade);
 
+  // 1. Strict match: same grade + topic keywords match + unused
   let candidates = bank.mcq.filter(item => {
     if (ctx.usedContents.has(item.content)) return false;
+    if (targetGrade && item.grade && item.grade !== targetGrade) return false;
     if (item.topicKeywords && item.topicKeywords.some(kw => tKeywords.includes(kw))) return true;
     return false;
   });
 
+  // 2. Secondary match: same grade + unused
   if (candidates.length === 0) {
+    candidates = bank.mcq.filter(item => {
+      if (ctx.usedContents.has(item.content)) return false;
+      if (targetGrade && item.grade && item.grade !== targetGrade) return false;
+      return true;
+    });
+  }
+
+  // 3. Fallback if bank has no items for this grade (only for non-grade-tagged banks)
+  if (candidates.length === 0 && !targetGrade) {
     candidates = bank.mcq.filter(item => !ctx.usedContents.has(item.content));
   }
 
@@ -544,7 +563,6 @@ function getUniqueMCQuestion(ctx: SelectionContext): ExamQuestion {
   }
 
   // Synthesize subject-specific, highly pedagogical MCQ question with variation
-  const subjectName = ctx.subjectName;
   const unit = ctx.unit || ctx.topic;
   const v = ctx.orderNumber;
 
@@ -671,14 +689,24 @@ function getUniqueTFQuestion(ctx: SelectionContext): ExamQuestion {
   const bank = getQuestionBankForSubject(ctx.subjectKey);
   const id = `q-tf-${ctx.orderNumber}-${Math.random().toString(36).substring(2, 6)}`;
   const tKeywords = (ctx.topic + ' ' + ctx.unit).toLowerCase();
+  const targetGrade = extractGradeNumber(ctx.grade);
 
   let candidates = bank.tf.filter(item => {
     if (ctx.usedContents.has(item.content)) return false;
+    if (targetGrade && item.grade && item.grade !== targetGrade) return false;
     if (item.topicKeywords && item.topicKeywords.some(kw => tKeywords.includes(kw))) return true;
     return false;
   });
 
   if (candidates.length === 0) {
+    candidates = bank.tf.filter(item => {
+      if (ctx.usedContents.has(item.content)) return false;
+      if (targetGrade && item.grade && item.grade !== targetGrade) return false;
+      return true;
+    });
+  }
+
+  if (candidates.length === 0 && !targetGrade) {
     candidates = bank.tf.filter(item => !ctx.usedContents.has(item.content));
   }
 
@@ -750,14 +778,24 @@ function getUniqueShortQuestion(ctx: SelectionContext): ExamQuestion {
   const bank = getQuestionBankForSubject(ctx.subjectKey);
   const id = `q-sa-${ctx.orderNumber}-${Math.random().toString(36).substring(2, 6)}`;
   const tKeywords = (ctx.topic + ' ' + ctx.unit).toLowerCase();
+  const targetGrade = extractGradeNumber(ctx.grade);
 
   let candidates = bank.short.filter(item => {
     if (ctx.usedContents.has(item.content)) return false;
+    if (targetGrade && item.grade && item.grade !== targetGrade) return false;
     if (item.topicKeywords && item.topicKeywords.some(kw => tKeywords.includes(kw))) return true;
     return false;
   });
 
   if (candidates.length === 0) {
+    candidates = bank.short.filter(item => {
+      if (ctx.usedContents.has(item.content)) return false;
+      if (targetGrade && item.grade && item.grade !== targetGrade) return false;
+      return true;
+    });
+  }
+
+  if (candidates.length === 0 && !targetGrade) {
     candidates = bank.short.filter(item => !ctx.usedContents.has(item.content));
   }
 
@@ -833,14 +871,24 @@ function getUniqueEssayQuestion(ctx: SelectionContext): ExamQuestion {
   const bank = getQuestionBankForSubject(ctx.subjectKey);
   const id = `q-es-${ctx.orderNumber}-${Math.random().toString(36).substring(2, 6)}`;
   const tKeywords = (ctx.topic + ' ' + ctx.unit).toLowerCase();
+  const targetGrade = extractGradeNumber(ctx.grade);
 
   let candidates = bank.essay.filter(item => {
     if (ctx.usedContents.has(item.content)) return false;
+    if (targetGrade && item.grade && item.grade !== targetGrade) return false;
     if (item.topicKeywords && item.topicKeywords.some(kw => tKeywords.includes(kw))) return true;
     return false;
   });
 
   if (candidates.length === 0) {
+    candidates = bank.essay.filter(item => {
+      if (ctx.usedContents.has(item.content)) return false;
+      if (targetGrade && item.grade && item.grade !== targetGrade) return false;
+      return true;
+    });
+  }
+
+  if (candidates.length === 0 && !targetGrade) {
     candidates = bank.essay.filter(item => !ctx.usedContents.has(item.content));
   }
 
@@ -862,7 +910,7 @@ function getUniqueEssayQuestion(ctx: SelectionContext): ExamQuestion {
   }
 
   const v = ctx.orderNumber;
-  const synthContent = `Câu hỏi tự luận ${v}: Dựa trên kiến thức về "${ctx.topic} - ${ctx.unit}":\na) Trình bày các đặc điểm bản chất và nguyên lí khoa học cốt lõi của nội dung trên.\nb) Phân tích 02 ứng dụng thực tiễn hoặc đề xuất giải pháp nhằm nâng cao hiệu quả vận dụng kiến thức này trong học tập và đời sống.`;
+  const synthContent = `Dựa trên kiến thức về "${ctx.topic} - ${ctx.unit}":\na) Trình bày các đặc điểm bản chất và nguyên lí khoa học cốt lõi của nội dung trên.\nb) Phân tích 02 ứng dụng thực tiễn hoặc đề xuất giải pháp nhằm nâng cao hiệu quả vận dụng kiến thức này trong học tập và đời sống.`;
   
   const essayRubric = `Ý a (1.0đ): Nêu chính xác các khái niệm, cơ chế hoạt động và bản chất lí thuyết của ${ctx.unit || ctx.topic}.\nÝ b (1.0đ): Phân tích cụ thể 02 ứng dụng thực tế có tính khả thi, lập luận chặt chẽ và thuyết phục.`;
 
@@ -956,6 +1004,245 @@ export function generateInitialMatrixAndSpecForSubject(subject: string, grade: s
   }
 
   if (subjectKey === 'dia-li') {
+    const targetGrade = extractGradeNumber(grade);
+
+    if (targetGrade === '10') {
+      const matrix: MatrixRow[] = [
+        {
+          id: 'mat-dl10-1',
+          topic: 'Sử dụng bản đồ và Ứng dụng công nghệ GPS, GIS',
+          unit: 'Phương pháp biểu hiện bản đồ và ứng dụng công nghệ địa lí',
+          part1_nb: 2, part1_th: 1, part1_vd: 0, part1_vdc: 0,
+          part2_nb: 1, part2_th: 0, part2_vd: 0, part2_vdc: 0,
+          part3_nb: 0, part3_th: 1, part3_vd: 0, part3_vdc: 0,
+          part4_nb: 0, part4_th: 0, part4_vd: 0, part4_vdc: 0,
+          totalPoints: 2.25
+        },
+        {
+          id: 'mat-dl10-2',
+          topic: 'Thạch quyển và Khí quyển',
+          unit: 'Thạch quyển, nội lực, ngoại lực và sự phân bố nhiệt ẩm',
+          part1_nb: 2, part1_th: 1, part1_vd: 1, part1_vdc: 0,
+          part2_nb: 0, part2_th: 1, part2_vd: 0, part2_vdc: 0,
+          part3_nb: 0, part3_th: 1, part3_vd: 1, part3_vdc: 0,
+          part4_nb: 0, part4_th: 0, part4_vd: 0, part4_vdc: 0,
+          totalPoints: 3.0
+        },
+        {
+          id: 'mat-dl10-3',
+          topic: 'Thuỷ quyển và Sinh quyển',
+          unit: 'Nước trên lục địa, dòng chảy sông ngòi và các đới sinh vật',
+          part1_nb: 1, part1_th: 1, part1_vd: 0, part1_vdc: 0,
+          part2_nb: 0, part2_th: 1, part2_vd: 0, part2_vdc: 0,
+          part3_nb: 0, part3_th: 0, part3_vd: 1, part3_vdc: 0,
+          part4_nb: 0, part4_th: 0, part4_vd: 0, part4_vdc: 0,
+          totalPoints: 2.0
+        },
+        {
+          id: 'mat-dl10-4',
+          topic: 'Địa lí dân cư và các ngành kinh tế',
+          unit: 'Cơ cấu dân số, nông nghiệp và dịch vụ thế giới',
+          part1_nb: 1, part1_th: 1, part1_vd: 1, part1_vdc: 0,
+          part2_nb: 0, part2_th: 0, part2_vd: 1, part2_vdc: 0,
+          part3_nb: 0, part3_th: 0, part3_vd: 1, part3_vdc: 1,
+          part4_nb: 0, part4_th: 0, part4_vd: 0, part4_vdc: 0,
+          totalPoints: 2.75
+        }
+      ];
+
+      const specification: SpecificationItem[] = [
+        {
+          id: 'spec-dl10-1',
+          topic: 'Sử dụng bản đồ và Ứng dụng công nghệ GPS, GIS',
+          unit: 'Phương pháp biểu hiện bản đồ và ứng dụng công nghệ địa lí',
+          learningObjectives: {
+            nb: 'Nêu được các phương pháp biểu hiện đối tượng địa lí trên bản đồ và chức năng cơ bản của GPS.',
+            th: 'Giải thích được nguyên lí hoạt động và ý nghĩa của công nghệ GIS trong giám sát tài nguyên.',
+            vd: 'Xác định tọa độ địa lí, cự li thực tế và phân tích thông tin từ hệ thống thông tin địa lí GIS.',
+            vdc: 'Đề xuất giải pháp ứng dụng GPS và viễn thám trong cảnh báo sớm thiên tai và cứu hộ cứu nạn.'
+          },
+          questionCount: {
+            part1: { nb: 2, th: 1, vd: 0, vdc: 0 },
+            part2: { nb: 1, th: 0, vd: 0, vdc: 0 },
+            part3: { nb: 0, th: 1, vd: 0, vdc: 0 },
+            part4: { nb: 0, th: 0, vd: 0, vdc: 0 },
+          }
+        },
+        {
+          id: 'spec-dl10-2',
+          topic: 'Thạch quyển và Khí quyển',
+          unit: 'Thạch quyển, nội lực, ngoại lực và sự phân bố nhiệt ẩm',
+          learningObjectives: {
+            nb: 'Trình bày được cấu trúc của thạch quyển, các mảng kiến tạo và các đai khí áp trên Trái Đất.',
+            th: 'Phân tích được tác động của nội lực, ngoại lực và nguyên nhân hình thành các mùa khí hậu.',
+            vd: 'Tính toán và phân tích bảng số liệu về nhiệt độ không khí theo độ cao, lượng mưa các tháng.',
+            vdc: 'Giải thích mối liên hệ giữa các hiện tượng thời tiết cực đoan (El Nino, La Nina) với biến đổi khí quyển.'
+          },
+          questionCount: {
+            part1: { nb: 2, th: 1, vd: 1, vdc: 0 },
+            part2: { nb: 0, th: 1, vd: 0, vdc: 0 },
+            part3: { nb: 0, th: 1, vd: 1, vdc: 0 },
+            part4: { nb: 0, th: 0, vd: 0, vdc: 0 },
+          }
+        },
+        {
+          id: 'spec-dl10-3',
+          topic: 'Thuỷ quyển và Sinh quyển',
+          unit: 'Nước trên lục địa, dòng chảy sông ngòi và các đới sinh vật',
+          learningObjectives: {
+            nb: 'Nêu được các nguồn cung cấp nước cho sông ngòi và đặc điểm các đới sinh vật chính.',
+            th: 'Giải thích được các nhân tố ảnh hưởng đến chế độ nước sông và sự phân bố của sinh vật.',
+            vd: 'Xử lí số liệu và vẽ/nhận xét biểu đồ lưu lượng nước sông và lượng mưa theo các tháng trong năm.',
+            vdc: 'Đánh giá nguy cơ suy thoái tài nguyên nước ngọt và đề xuất giải pháp quản lí tổng hợp lưu vực sông.'
+          },
+          questionCount: {
+            part1: { nb: 1, th: 1, vd: 0, vdc: 0 },
+            part2: { nb: 0, th: 1, vd: 0, vdc: 0 },
+            part3: { nb: 0, th: 0, vd: 1, vdc: 0 },
+            part4: { nb: 0, th: 0, vd: 0, vdc: 0 },
+          }
+        },
+        {
+          id: 'spec-dl10-4',
+          topic: 'Địa lí dân cư và các ngành kinh tế',
+          unit: 'Cơ cấu dân số, nông nghiệp và dịch vụ thế giới',
+          learningObjectives: {
+            nb: 'Trình bày được cơ cấu dân số theo giới tính, độ tuổi và vai trò của các ngành kinh tế.',
+            th: 'Phân tích được các nhân tố ảnh hưởng đến sự phân bố nông nghiệp, công nghiệp và dịch vụ.',
+            vd: 'Phân tích bảng số liệu về cơ cấu lao động và tính toán tỉ suất gia tăng dân số tự nhiên.',
+            vdc: 'Đánh giá xu hướng chuyển đổi số và phát triển kinh tế xanh trong các ngành kinh tế hiện đại.'
+          },
+          questionCount: {
+            part1: { nb: 1, th: 1, vd: 1, vdc: 0 },
+            part2: { nb: 0, th: 0, vd: 1, vdc: 0 },
+            part3: { nb: 0, th: 0, vd: 1, vdc: 1 },
+            part4: { nb: 0, th: 0, vd: 0, vdc: 0 },
+          }
+        }
+      ];
+
+      return { matrix, specification };
+    }
+
+    if (targetGrade === '11') {
+      const matrix: MatrixRow[] = [
+        {
+          id: 'mat-dl11-1',
+          topic: 'Toàn cầu hoá kinh tế và Các nhóm nước',
+          unit: 'Toàn cầu hoá, khu vực hoá và sự phân chia nhóm nước thế giới',
+          part1_nb: 2, part1_th: 1, part1_vd: 0, part1_vdc: 0,
+          part2_nb: 1, part2_th: 0, part2_vd: 0, part2_vdc: 0,
+          part3_nb: 0, part3_th: 1, part3_vd: 0, part3_vdc: 0,
+          part4_nb: 0, part4_th: 0, part4_vd: 0, part4_vdc: 0,
+          totalPoints: 2.25
+        },
+        {
+          id: 'mat-dl11-2',
+          topic: 'Liên minh Châu Âu (EU) và Khu vực Mỹ La-tinh',
+          unit: 'Vị thế kinh tế EU và đặc điểm đô thị hoá Mỹ La-tinh',
+          part1_nb: 2, part1_th: 1, part1_vd: 1, part1_vdc: 0,
+          part2_nb: 0, part2_th: 1, part2_vd: 0, part2_vdc: 0,
+          part3_nb: 0, part3_th: 1, part3_vd: 1, part3_vdc: 0,
+          part4_nb: 0, part4_th: 0, part4_vd: 0, part4_vdc: 0,
+          totalPoints: 3.0
+        },
+        {
+          id: 'mat-dl11-3',
+          topic: 'Khu vực Đông Nam Á & ASEAN',
+          unit: 'Tự nhiên, dân cư, kinh tế Đông Nam Á và hợp tác ASEAN',
+          part1_nb: 1, part1_th: 1, part1_vd: 0, part1_vdc: 0,
+          part2_nb: 0, part2_th: 1, part2_vd: 0, part2_vdc: 0,
+          part3_nb: 0, part3_th: 0, part3_vd: 1, part3_vdc: 0,
+          part4_nb: 0, part4_th: 0, part4_vd: 0, part4_vdc: 0,
+          totalPoints: 2.0
+        },
+        {
+          id: 'mat-dl11-4',
+          topic: 'Hợp tác phát triển kinh tế biển và Tiểu vùng sông Mê Công',
+          unit: 'Bảo vệ môi trường biển đảo và liên kết kinh tế tiểu vùng',
+          part1_nb: 1, part1_th: 1, part1_vd: 1, part1_vdc: 0,
+          part2_nb: 0, part2_th: 0, part2_vd: 1, part2_vdc: 0,
+          part3_nb: 0, part3_th: 0, part3_vd: 1, part3_vdc: 1,
+          part4_nb: 0, part4_th: 0, part4_vd: 0, part4_vdc: 0,
+          totalPoints: 2.75
+        }
+      ];
+
+      const specification: SpecificationItem[] = [
+        {
+          id: 'spec-dl11-1',
+          topic: 'Toàn cầu hoá kinh tế và Các nhóm nước',
+          unit: 'Toàn cầu hoá, khu vực hoá và sự phân chia nhóm nước thế giới',
+          learningObjectives: {
+            nb: 'Nêu được biểu hiện của toàn cầu hoá, khu vực hoá và các chỉ số phân chia nhóm nước (GNI/người, HDI).',
+            th: 'Phân tích được cơ hội và thách thức của toàn cầu hoá đối với các nước đang phát triển.',
+            vd: 'Xử lí số liệu GDP, GNI bình quân đầu người để phân loại trình độ phát triển của các quốc gia.',
+            vdc: 'Đánh giá tác động của cuộc cách mạng công nghiệp lần thứ tư đến chuỗi cung ứng toàn cầu.'
+          },
+          questionCount: {
+            part1: { nb: 2, th: 1, vd: 0, vdc: 0 },
+            part2: { nb: 1, th: 0, vd: 0, vdc: 0 },
+            part3: { nb: 0, th: 1, vd: 0, vdc: 0 },
+            part4: { nb: 0, th: 0, vd: 0, vdc: 0 },
+          }
+        },
+        {
+          id: 'spec-dl11-2',
+          topic: 'Liên minh Châu Âu (EU) và Khu vực Mỹ La-tinh',
+          unit: 'Vị thế kinh tế EU và đặc điểm đô thị hoá Mỹ La-tinh',
+          learningObjectives: {
+            nb: 'Trình bày được quy mô kinh tế, thị trường chung châu Âu và các ngành kinh tế trọng điểm của EU.',
+            th: 'Giải thích được đặc điểm đô thị hoá tự phát và tình trạng bất bình đẳng thu nhập ở Mỹ La-tinh.',
+            vd: 'Phân tích bảng số liệu về cán cân xuất nhập khẩu và kim ngạch thương mại của EU với thế giới.',
+            vdc: 'Rút ra bài học kinh nghiệm từ mô hình liên kết kinh tế EU cho tiến trình hội nhập khu vực.'
+          },
+          questionCount: {
+            part1: { nb: 2, th: 1, vd: 1, vdc: 0 },
+            part2: { nb: 0, th: 1, vd: 0, vdc: 0 },
+            part3: { nb: 0, th: 1, vd: 1, vdc: 0 },
+            part4: { nb: 0, th: 0, vd: 0, vdc: 0 },
+          }
+        },
+        {
+          id: 'spec-dl11-3',
+          topic: 'Khu vực Đông Nam Á & ASEAN',
+          unit: 'Tự nhiên, dân cư, kinh tế Đông Nam Á và hợp tác ASEAN',
+          learningObjectives: {
+            nb: 'Nêu được vị trí địa lí, điều kiện tự nhiên và các mục tiêu chính của Cộng đồng ASEAN.',
+            th: 'Phân tích được thế mạnh và hạn chế của tự nhiên, dân cư Đông Nam Á đối với phát triển kinh tế.',
+            vd: 'Tính toán tốc độ tăng trưởng kinh tế và cơ cấu GDP của các quốc gia Đông Nam Á từ bảng số liệu.',
+            vdc: 'Đề xuất giải pháp tăng cường vai trò trung tâm của ASEAN trong duy trì an ninh khu vực Biển Đông.'
+          },
+          questionCount: {
+            part1: { nb: 1, th: 1, vd: 0, vdc: 0 },
+            part2: { nb: 0, th: 1, vd: 0, vdc: 0 },
+            part3: { nb: 0, th: 0, vd: 1, vdc: 0 },
+            part4: { nb: 0, th: 0, vd: 0, vdc: 0 },
+          }
+        },
+        {
+          id: 'spec-dl11-4',
+          topic: 'Hợp tác phát triển kinh tế biển và Tiểu vùng sông Mê Công',
+          unit: 'Bảo vệ môi trường biển đảo và liên kết kinh tế tiểu vùng',
+          learningObjectives: {
+            nb: 'Trình bày được các tiềm năng tài nguyên biển đảo và các chương trình hợp tác tiểu vùng Mê Công.',
+            th: 'Giải thích được tính cấp thiết của hợp tác quốc tế trong quản lí, khai thác bền vững nguồn nước sông Mê Công.',
+            vd: 'Phân tích biểu đồ và số liệu về sản lượng khai thác hải sản, du lịch biển đảo khu vực Đông Nam Á.',
+            vdc: 'Đánh giá triển vọng kinh tế biển xanh và các giải pháp giảm thiểu rác thải nhựa đại dương.'
+          },
+          questionCount: {
+            part1: { nb: 1, th: 1, vd: 1, vdc: 0 },
+            part2: { nb: 0, th: 0, vd: 1, vdc: 0 },
+            part3: { nb: 0, th: 0, vd: 1, vdc: 1 },
+            part4: { nb: 0, th: 0, vd: 0, vdc: 0 },
+          }
+        }
+      ];
+
+      return { matrix, specification };
+    }
+
+    // Default: Grade 12
     const matrix: MatrixRow[] = [
       {
         id: 'mat-dl-1',

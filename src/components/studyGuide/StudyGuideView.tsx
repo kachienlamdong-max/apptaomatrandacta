@@ -447,28 +447,26 @@ export const StudyGuideView: React.FC<StudyGuideViewProps> = ({
                             <MathRenderer text={q.content} />
                           </div>
 
-                          {/* Options for MCQ */}
+                          {/* Options for MCQ - National Exam Style (A, B on row 1; C, D on row 2 without heavy bounding boxes) */}
                           {q.type === 'multiple_choice' && q.options && q.options.length > 0 && (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-3 pl-1">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 mt-2.5 pl-1 font-serif text-[13px]">
                               {q.options.map((opt) => {
                                 const isCorrect = q.correctOption === opt.key;
                                 return (
                                   <div
                                     key={opt.key}
-                                    className={`p-2.5 rounded-xl border text-xs leading-relaxed transition-all flex items-start gap-2 ${
+                                    className={`flex items-start gap-2 py-0.5 leading-relaxed ${
                                       showAllSolutions && isCorrect
-                                        ? 'bg-emerald-50/80 border-emerald-300 text-emerald-950 font-medium shadow-xs ring-1 ring-emerald-400/50'
-                                        : 'bg-slate-50/70 border-slate-200 text-slate-700'
+                                        ? 'text-emerald-900 font-semibold'
+                                        : 'text-slate-800'
                                     }`}
                                   >
-                                    <span className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${
-                                      showAllSolutions && isCorrect
-                                        ? 'bg-emerald-600 text-white'
-                                        : 'bg-slate-200 text-slate-700'
+                                    <span className={`font-bold shrink-0 ${
+                                      showAllSolutions && isCorrect ? 'text-emerald-700 underline' : 'text-slate-900'
                                     }`}>
-                                      {opt.key}
+                                      {opt.key}.
                                     </span>
-                                    <div className="flex-1 pt-0.5">
+                                    <div className="flex-1">
                                       <MathRenderer text={opt.content} />
                                     </div>
                                   </div>
